@@ -1,0 +1,54 @@
+{% extends "index.html" %}
+{% load i18n %}
+
+{% block content %}
+<!-- include HTMX (once in your base template or here) -->
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+
+<div class="modal-body">
+  <form id="deputation-form" method="post" action="#">
+    {% csrf_token %}
+
+    <label class="form-label">{% trans "Employee" %}</label>
+    <select
+      name="employee_id"
+      id="id_employee"
+      class="form-select"
+      hx-get="{% url 'deputation:employee_lookup' %}"
+      hx-trigger="change"
+      hx-target="#autofill-fields"
+      hx-include="#id_employee"
+      hx-indicator="#emp-spinner">
+      <option value="">---------</option>
+      {% for emp in employees %}
+        <option value="{{ emp.id }}">
+          {{ emp.employee_first_name }} {{ emp.employee_last_name }} ({{ emp.emp_code }})
+        </option>
+      {% endfor %}
+    </select>
+
+    <div id="emp-spinner" class="htmx-indicator" style="display:none;">Loading…</div>
+
+    <!-- HTMX injects the fragment here -->
+    <div id="autofill-fields">
+      {% include "deputation/_employee_autofill_fields.html" with e=None %}
+    </div>
+
+    <div class="row mt-3">
+      <div class="col-md-6">
+        <label class="form-label">{% trans "Start Date" %}</label>
+        <input type="date" name="start_date" class="form-control">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">{% trans "End Date" %}</label>
+        <input type="date" name="end_date" class="form-control">
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-end mt-4">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <button type="button" class="btn btn-secondary ms-2" data-bs-dismiss="modal">Cancel</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

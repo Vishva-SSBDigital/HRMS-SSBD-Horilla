@@ -1,0 +1,45 @@
+{# Defaults so the partial renders even before any selection #}
+{% if designation is not defined %}{% with designation="" original_branch_name="" original_branch_id="" email="" current_position="" %}{% endwith %}{% endif %}
+
+{% comment %} <!-- Designation -->
+<div class="oh-input-group">
+  <label class="oh-label">Deputation Employee Designation</label>
+  <input type="text" class="oh-input" name="designation" id="id_designation" value="{{ designation }}" readonly>
+</div>
+
+<!-- Original Branch (display + hidden id for form post) -->
+<div class="oh-input-group">
+  <label class="oh-label">Original Branch (Created)</label>
+  <input type="text" class="oh-input" value="{{ original_branch_name }}" readonly>
+  <input type="hidden" name="original_branch" id="id_original_branch" value="{{ original_branch_id }}">
+</div>
+
+<!-- Email -->
+<div class="oh-input-group">
+  <label class="oh-label">Email ID</label>
+  <input type="email" class="oh-input" name="email" id="id_email" value="{{ email }}" readonly>
+</div>
+
+<!-- Current Position -->
+<div class="oh-input-group">
+  <label class="oh-label">Current Position</label>
+  <input type="text" class="oh-input" name="current_position" id="id_current_position" value="{{ current_position }}" readonly>
+</div> {% endcomment %}
+{# No outer wrapper here; HTMX will replace #employee-details innerHTML with this #}
+{# templates/deputation/_employee_autofill_fields.html #}
+<div class="oh-input-group">
+  <label class="oh-label">Deputation Employee Designation</label>
+  <input type="text" name="designation" class="oh-input" value="{{ designation|default_if_none:'' }}">
+</div>
+<div class="oh-input-group">
+  <label class="oh-label">Original Branch (Created)</label>
+  <input type="text" name="original_branch" class="oh-input" value="{{ original_branch|default_if_none:'' }}">
+</div>
+<div class="oh-input-group">
+  <label class="oh-label">Email ID</label>
+  <input type="email" name="email" class="oh-input" value="{{ email|default_if_none:'' }}">
+</div>
+<div class="oh-input-group">
+  <label class="oh-label">Current Position</label>
+  <input type="text" name="current_position" class="oh-input" value="{{ current_position|default_if_none:'' }}">
+</div>

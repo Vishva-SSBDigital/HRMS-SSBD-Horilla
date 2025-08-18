@@ -1,0 +1,364 @@
+{% extends 'index.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block content %}
+<main :class="sidebarOpen ? 'oh-main__sidebar-visible' : ''" id="deputation-page">
+  <!-- HEADER -->
+  <div class="oh-wrapper">
+    <div class="oh-breadcrumbs">
+      <a href="#" class="oh-breadcrumbs__item">Horilla</a>
+      <span class="oh-breadcrumbs__item">{% trans "deputation" %}</span>
+      <span class="oh-breadcrumbs__item oh-breadcrumbs__item--current">{% trans "employee" %}</span>
+    </div>
+    <h2 class="oh-page-title">{% trans "Employees" %} → {% trans "Deputations" %}</h2>
+  </div>
+
+  <!-- TOOLBAR -->
+  {% comment %} <section class="oh-wrapper" style="margin-top:.75rem;">
+    <div class="oh-toolbar" style="display:flex; align-items:center; gap:.5rem;">
+      <button class="oh-btn oh-btn--light">
+        {% trans "Select" %} (<span id="selectedCount">0</span>)
+      </button>
+
+      <div style="margin-left:auto; display:flex; align-items:center; gap:.5rem;">
+        <form method="get" class="d-flex" style="gap:.5rem;">
+          <div class="oh-input-group oh-input__search-group dp-search">
+           <input type="search" class="oh-input oh-input__icon" name="q" value="{{ q }}" placeholder="{% trans 'Search' %}">
+          </div>
+
+          <input class="oh-input hide-md" style="height:36px" type="text" name="branch" value="{{ branch }}" placeholder="{% trans 'Branch' %}">
+          <select class="oh-input hide-md" style="height:36px" name="status">
+            <option value="all"     {% if status == 'all' %}selected{% endif %}>{% trans "All" %}</option>
+            <option value="ongoing" {% if status == 'ongoing' %}selected{% endif %}>{% trans "Ongoing" %}</option>
+            <option value="ended"   {% if status == 'ended' %}selected{% endif %}>{% trans "Ended" %}</option>
+          </select>
+          <select class="oh-input hide-md" style="height:36px" name="per_page">
+            <option value="10"  {% if per_page == 10 %}selected{% endif %}>10/pg</option>
+            <option value="20"  {% if per_page == 20 or not per_page %}selected{% endif %}>20/pg</option>
+            <option value="50"  {% if per_page == 50 %}selected{% endif %}>50/pg</option>
+            <option value="100" {% if per_page == 100 %}selected{% endif %}>100/pg</option>
+          </select>
+
+          <button class="oh-btn oh-btn--light" type="submit">{% trans "See" %}</button>
+        </form>
+
+        <div class="oh-dropdown" x-data="{open:false}">
+          <button class="oh-btn oh-btn--light" @click="open = !open" @click.outside="open = false">{% trans "Actions" %}</button>
+          <div class="oh-dropdown__menu oh-dropdown__menu--right" x-show="open" style="display:none;">
+            <ul class="oh-dropdown__items">
+              <li class="oh-dropdown__item"><a class="oh-dropdown__link" href="#">{% trans "Export" %}</a></li>
+              <li class="oh-dropdown__item"><a class="oh-dropdown__link" href="#">{% trans "Bulk Delete" %}</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <a class="oh-btn oh-btn--secondary oh-btn--shadow"
+           data-toggle="oh-modal-toggle"
+           data-target="#DeputationModal"
+           hx-get="{% url 'deputation-create' %}"
+           hx-target="#DeputationModalTarget">
+          <ion-icon class="me-1" name="add-outline"></ion-icon> {% trans "Create" %}
+        </a>
+      </div>
+    </div>
+  </section> {% endcomment %}
+
+  <section class="oh-wrapper mt-3">
+  <div class="oh-toolbar d-flex align-items-center gap-2 flex-wrap">
+    
+    <!-- Select Button -->
+    <button class="oh-btn oh-btn--light">
+      {% trans "Select" %} (<span id="selectedCount">0</span>)
+    </button>
+
+    <!-- Search & Filters -->
+    <form method="get" class="d-flex align-items-center gap-2 ms-auto">
+      <div class="oh-input-group oh-input__search-group dp-search">
+        <input type="search" class="oh-input oh-input__icon" name="q" value="{{ q }}" placeholder="{% trans 'Search' %}">
+      </div>
+
+      <input class="oh-input hide-md" type="text" name="branch" value="{{ branch }}" placeholder="{% trans 'Branch' %}" style="height:36px;">
+      
+      <select class="oh-input hide-md" name="status" style="height:36px;">
+        <option value="all"     {% if status == 'all' %}selected{% endif %}>{% trans "All" %}</option>
+        <option value="ongoing" {% if status == 'ongoing' %}selected{% endif %}>{% trans "Ongoing" %}</option>
+        <option value="ended"   {% if status == 'ended' %}selected{% endif %}>{% trans "Ended" %}</option>
+      </select>
+
+      <select class="oh-input hide-md" name="per_page" style="height:36px;">
+        <option value="10"  {% if per_page == 10 %}selected{% endif %}>10/pg</option>
+        <option value="20"  {% if per_page == 20 or not per_page %}selected{% endif %}>20/pg</option>
+        <option value="50"  {% if per_page == 50 %}selected{% endif %}>50/pg</option>
+        <option value="100" {% if per_page == 100 %}selected{% endif %}>100/pg</option>
+      </select>
+
+      <button class="oh-btn oh-btn--light" type="submit">{% trans "See" %}</button>
+    </form>
+
+    <!-- Actions Dropdown -->
+    {% comment %} <div class="oh-dropdown" x-data="{open:false}">
+      <button class="oh-btn oh-btn--light" @click="open = !open" @click.outside="open = false">
+        {% trans "Actions" %}
+      </button>
+      <div class="oh-dropdown__menu oh-dropdown__menu--right" x-show="open" style="display:none;">
+        <ul class="oh-dropdown__items">
+          <li class="oh-dropdown__item"><a class="oh-dropdown__link" href="#">{% trans "Export" %}</a></li>
+          <li class="oh-dropdown__item"><a class="oh-dropdown__link" href="#">{% trans "Bulk Delete" %}</a></li>
+        </ul>
+      </div>
+    </div> {% endcomment %}
+
+    <!-- Create Button -->
+    <a class="oh-btn oh-btn--secondary oh-btn--shadow"
+       data-toggle="oh-modal-toggle"
+       data-target="#DeputationModal"
+       hx-get="{% url 'deputation-create' %}"
+       hx-target="#DeputationModalTarget">
+      <ion-icon class="me-1" name="add-outline"></ion-icon> {% trans "Create" %}
+    </a>
+
+  </div>
+</section>
+
+
+  <!-- TABLE -->
+  <section class="oh-wrapper" style="margin-top:.5rem;">
+    <div class="oh-card">
+      <div class="oh-card__body">
+
+        <div class="dp-table-wrap">
+          <table class="dp-table">
+            <!-- Use CSS vars to ensure sticky offsets are correct -->
+            <colgroup>
+              <col style="width:var(--col1)">         <!-- checkbox -->
+              <col style="width:var(--col2)">         <!-- employee -->
+              <col style="min-width:220px">           <!-- email -->
+              <col style="min-width:160px">           <!-- designation -->
+              <col style="min-width:160px">           <!-- original branch -->
+              <col style="min-width:160px">           <!-- deputed to -->
+              <col style="min-width:140px">           <!-- start -->
+              <col style="min-width:140px">           <!-- end -->
+              <col style="min-width:120px">           <!-- status -->
+              <col style="width:120px">               <!-- actions -->
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="sticky-col-1">
+                  <input type="checkbox" class="oh-input oh-input__checkbox" id="chkAll" aria-label="Select all">
+                </th>
+                <th class="sticky-col-2">{% trans "Employee" %}</th>
+                <th class="hide-md">{% trans "Email" %}</th>
+                <th class="hide-lg">{% trans "Designation" %}</th>
+                <th class="hide-lg">{% trans "Original Branch" %}</th>
+                <th>{% trans "Deputed To" %}</th>
+                <th class="hide-md">{% trans "Start Date" %}</th>
+                <th class="hide-md">{% trans "End Date" %}</th>
+                <th>{% trans "Status" %}</th>
+                <th >{% trans "Actions" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for dep in page_obj.object_list %}
+                {% with avatar='https://ui-avatars.com/api/?name='|add:dep.employee|add:'&background=random' %}
+                <tr>
+                  <td class="sticky-col-1 center">
+                    <input type="checkbox" class="oh-input oh-input__checkbox rowChk" value="{{ dep.id }}">
+                  </td>
+
+                  <td class="sticky-col-2 center">
+                    <div class="emp-cell">
+                      {% comment %} <img src="{{ avatar }}" alt="{{ dep.employee }}"> {% endcomment %}
+                      <div class="emp-meta">
+                        <div class="emp-name ellipsis" title="{{ dep.employee }}">{{ dep.employee }}</div>
+                        {% comment %} {% if dep.employee.badge_id %}
+                          <div class="emp-badge">{{ dep.employee.badge_id }}</div>
+                        {% endif %} {% endcomment %}
+                      </div>
+                    </div>
+                  </td>
+
+                  <td class="hide-md ellipsis" title="{{ dep.email }}">{{ dep.email }}</td>
+                  <td class="hide-lg ellipsis" title="{{ dep.designation }}">{{ dep.designation }}</td>
+                  <td class="hide-lg ellipsis" title="{{ dep.original_branch }}">{{ dep.original_branch }}</td>
+                  <td class="ellipsis" title="{{ dep.deputed_to }}">{{ dep.deputed_to }}</td>
+                  <td class="hide-md nowrap">{{ dep.start_date }}</td>
+                  <td class="hide-md nowrap">{{ dep.end_date|default:"—" }}</td>
+                  <td>
+                    {% if dep.end_date %}
+                      <span class="oh-badge oh-badge--secondary oh-badge--soft">{% trans "Ended" %}</span>
+                    {% else %}
+                      <span class="oh-badge oh-badge--success oh-badge--soft">{% trans "Ongoing" %}</span>
+                    {% endif %}
+                  </td>
+                  <td class="center">
+                    <div class="oh-btn-group btn-icons">
+                      <a class="oh-btn oh-btn--light-bkg oh-btn--icon"
+                         data-toggle="oh-modal-toggle"
+                         data-target="#DeputationModal"
+                         hx-get="{% url 'deputation-update' dep.id %}"
+                         hx-target="#DeputationModalTarget"
+                         title="{% trans 'Amend' %}">
+                        <ion-icon name="create-outline" aria-hidden="true"></ion-icon>
+                      </a>
+
+                      <form
+                        hx-post="{% url 'deputation-delete' dep.id %}"
+                        hx-confirm="{% trans 'Delete this deputation?' %}"
+                        hx-target="closest tr"
+                        hx-swap="outerHTML:remove"
+                        onsubmit="event.stopPropagation();"
+                        style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="oh-btn oh-btn--danger-outline oh-btn--icon"
+                                title="{% trans 'Delete' %}">
+                          <ion-icon name="trash-outline" aria-hidden="true"></ion-icon>
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+                {% endwith %}
+              {% empty %}
+                <tr>
+                  <td colspan="10" class="empty">
+                    <img src="{% static 'images/ui/project/task.png' %}" alt="">
+                    <div class="oh-404__subtitle">
+                      {% trans "There are currently no deputations; please create a new one." %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="oh-pagination mt-3" style="justify-content:flex-end;">
+          {% if page_obj.has_previous %}
+            <a class="oh-pagination__link" href="?q={{ q }}&branch={{ branch }}&status={{ status }}&per_page={{ per_page }}&page={{ page_obj.previous_page_number }}">&laquo;</a>
+          {% endif %}
+          <span class="oh-pagination__current">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+          {% if page_obj.has_next %}
+            <a class="oh-pagination__link" href="?q={{ q }}&branch={{ branch }}&status={{ status }}&per_page={{ per_page }}&page={{ page_obj.next_page_number }}">&raquo;</a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL TARGET -->
+<div class="oh-modal" id="DeputationModal" role="dialog" aria-hidden="true">
+  <div class="oh-modal__dialog" style="max-width: 760px" id="DeputationModalTarget"></div>
+</div>
+
+<style>
+  /* ----- Scoped to this page so it actually overrides theme ----- */
+  #deputation-page{
+    --col1: 46px;      /* checkbox col width */
+    --col2: 260px;     /* employee col width */
+  }
+
+  /* search width responsive */
+  #deputation-page .dp-search{ width: 280px; }
+  @media (max-width: 992px){ #deputation-page .dp-search{ width: 220px; } }
+
+  /* responsive column priority */
+  #deputation-page .hide-lg { display: table-cell; }
+  #deputation-page .hide-md { display: table-cell; }
+  @media (max-width: 1200px){ #deputation-page .hide-lg { display:none; } }
+  @media (max-width: 992px){  #deputation-page .hide-md { display:none; } }
+
+  /* scroll container */
+  #deputation-page .dp-table-wrap{
+    width:100%;
+    overflow:auto;
+    border:1px solid #eef0f4;
+    border-radius:12px;
+    background:#fff;
+  }
+
+  /* table base */
+  #deputation-page .dp-table{
+    width:100%;
+    min-width: calc(var(--col1) + var(--col2) + 720px);
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    font-size: 14px;
+    line-height: 1.25;
+  }
+
+  /* header */
+  #deputation-page .dp-table thead th{
+    position: sticky; top: 0; z-index: 5;
+    background:#fff;
+    font-weight:600;
+    color:#374151;
+    padding: 10px 12px;
+    border-bottom: 1px solid #eef0f4;
+    white-space: nowrap;    
+  text-align: left !important;
+  }
+
+  /* rows */
+  #deputation-page .dp-table tbody td{
+    padding: 10px 12px;
+    border-bottom: 1px solid #f2f4f8;
+    color:#111827;
+    vertical-align: middle;
+    height: 44px;
+    background:#fff;
+  }
+  #deputation-page .dp-table tbody tr:nth-child(odd){ background:#fafbff; }
+  #deputation-page .dp-table tbody tr:hover{ background:#f2f7ff; }
+
+  /* two sticky columns with proper offsets */
+  #deputation-page .sticky-col-1,
+  #deputation-page .sticky-col-2{
+    position: sticky; z-index: 6; background:#fff;
+    /* subtle divider at right edge of sticky columns */
+    box-shadow: 1px 0 0 0 #eef0f4 inset;
+  }
+  #deputation-page .sticky-col-1{ left: 0; width: var(--col1); min-width: var(--col1); }
+  #deputation-page .sticky-col-2{ left: var(--col1); width: var(--col2); min-width: var(--col2); }
+
+  /* helpers */
+  #deputation-page .ellipsis{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #deputation-page .nowrap{ white-space: nowrap; }
+  #deputation-page .center{ text-align:center; }
+
+  /* employee cell */
+  #deputation-page .emp-cell{ display:flex; align-items:center; gap:.6rem;}
+  #deputation-page .emp-cell img{ width:28px; height:28px; border-radius:9999px; object-fit:cover; }
+  #deputation-page .emp-meta{ display:flex; flex-direction:column; line-height:1.1; min-width:0; } /* allow ellipsis */
+  #deputation-page .emp-name{ font-weight:600; }
+  #deputation-page .emp-badge{ color:#6b7280; font-size:12px; }
+
+  /* compact icon buttons */
+  #deputation-page .btn-icons{ display:flex; gap:.4rem; justify-content:center; }
+  #deputation-page .oh-btn--icon{
+    width:34px; height:34px; padding:0;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+
+  /* empty */
+  #deputation-page .empty{ text-align:center; padding:48px 16px; }
+  #deputation-page .empty img{ width:160px; display:block; margin:0 auto 8px; opacity:.9; }
+</style>
+
+<script>
+  // selection count
+  const chkAll = document.getElementById('chkAll');
+  const selectedCountEl = document.getElementById('selectedCount');
+  const rows = () => document.querySelectorAll('.rowChk');
+  function refreshCount(){ selectedCountEl.textContent = [...rows()].filter(cb => cb.checked).length; }
+  chkAll?.addEventListener('change', () => { rows().forEach(cb => cb.checked = chkAll.checked); refreshCount(); });
+  document.addEventListener('change', e => { if (e.target.classList?.contains('rowChk')) refreshCount(); });
+</script>
+
+{% endblock content %}
+
