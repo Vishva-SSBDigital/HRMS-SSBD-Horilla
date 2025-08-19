@@ -306,7 +306,7 @@ def create_deputation(request):
                 "employee": emp.id,
                 "designation": emp.designation,
                 "original_branch": emp.branch,
-                "email": emp.email,               # correct key
+                "email": emp.email,
                 "current_position": emp.current_position,
             }
         except Employee.DoesNotExist:
@@ -335,15 +335,17 @@ def create_deputation(request):
 
             obj.save()
 
+            # Show success message
+            messages.success(request, _("Deputation created successfully."))
+
+            # If HTMX request, send response without redirect
             if _is_htmx(request):
                 resp = HttpResponse(status=204)
                 resp["HX-Trigger"] = "deputation:created"
                 return resp
 
-            messages.success(request, _("Deputation created successfully."))
             return redirect("deputation-list")
         # fall-through renders errors
-
     else:
         form = DeputationForm(initial=initial)
 
@@ -352,7 +354,6 @@ def create_deputation(request):
         "deputation/deputation_form.html",
         {"form": form, "employees": employees, "is_update": False},
     )
-
 
 @login_required
 def deputation_update(request, pk):

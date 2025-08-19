@@ -213,7 +213,7 @@
   </form>
 </div> {% endcomment %}
 {# deputation/deputation_form.html #}
-<div class="oh-modal__dialog-body" id="DeputationModalTarget">
+{% comment %} <div class="oh-modal__dialog-body" id="DeputationModalTarget">
   <form
     method="post"
     class="oh-form"
@@ -283,4 +283,105 @@
       <button type="button" class="oh-btn oh-btn--light" data-toggle="oh-modal-toggle" data-dismiss="oh-modal">{% trans "Cancel" %}</button>
     </div>
   </form>
+</div> {% endcomment %}
+<div class="oh-modal__dialog-body" id="DeputationModalTarget">
+  <form
+    method="post"
+    class="oh-form"
+    hx-post="{% if is_update %}{% url 'deputation-update' instance.id %}{% else %}{% url 'deputation-create' %}{% endif %}"
+    hx-target="#DeputationModalTarget"
+    hx-swap="innerHTML"
+  >
+    {% csrf_token %}
+
+    <div class="oh-grid oh-grid--2">
+      {# Employee select (HTMX attrs are set in forms.py) #}
+      <div class="oh-input-group">
+        <label class="oh-label">{{ form.employee.label }}</label>
+        {{ form.employee }} {% for e in form.employee.errors %}
+        <div class="oh-input__error">{{ e }}</div>
+        {% endfor %}
+      </div>
+
+      {# Auto-filled details (HTMX replaces innerHTML of this wrapper) #}
+      <div
+        id="employee-details"
+        class="oh-grid oh-grid--2"
+        style="grid-column: 1/-1"
+      >
+        <div class="oh-input-group">
+          <label class="oh-label">{{ form.designation.label }}</label>
+          {{ form.designation }} {% for e in form.designation.errors %}
+          <div class="oh-input__error">{{ e }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="oh-input-group">
+          <label class="oh-label">{{ form.original_branch.label }}</label>
+          {{ form.original_branch }} {% for e in form.original_branch.errors %}
+          <div class="oh-input__error">{{ e }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="oh-input-group">
+          <label class="oh-label">{{ form.email.label }}</label>
+          {{ form.email }} {% for e in form.email.errors %}
+          <div class="oh-input__error">{{ e }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="oh-input-group">
+          <label class="oh-label">{{ form.current_position.label }}</label>
+          {{ form.current_position }} {% for e in form.current_position.errors %}
+          <div class="oh-input__error">{{ e }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Per-deputation fields (user fills these) #}
+      <div class="oh-input-group">
+        <label class="oh-label">{{ form.deputed_to.label }}</label>
+        {{ form.deputed_to }} {% for e in form.deputed_to.errors %}
+        <div class="oh-input__error">{{ e }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="oh-input-group">
+        <label class="oh-label">{{ form.start_date.label }}</label>
+        {{ form.start_date }} {% for e in form.start_date.errors %}
+        <div class="oh-input__error">{{ e }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="oh-input-group">
+        <label class="oh-label">{{ form.end_date.label }}</label>
+        {{ form.end_date }} {% for e in form.end_date.errors %}
+        <div class="oh-input__error">{{ e }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="oh-modal__dialog-footer mt-2">
+      <button type="submit" class="oh-btn oh-btn--secondary oh-btn--shadow">
+        {% trans "Save" %}
+      </button>
+      <button
+        type="button"
+        class="oh-btn oh-btn--light"
+        id="cancelButton"
+      >
+        {% trans "Cancel" %}
+      </button>
+    </div>
+  </form>
 </div>
+
+<script>
+  // JavaScript to close the modal when cancel button is clicked
+  document.getElementById('cancelButton')?.addEventListener('click', function() {
+    const modal = document.getElementById('DeputationModal');
+    if (modal) {
+      modal.style.display = 'none';  // Hide the modal
+    }
+  });
+</script>
