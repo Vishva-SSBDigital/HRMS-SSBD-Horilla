@@ -323,7 +323,8 @@ def create_deputation(request):
         if data.get("end_date", "").strip() == "":
             data["end_date"] = None
 
-        form = DeputationForm(data)
+        # form = DeputationForm(data)
+        form = DeputationForm(data, request=request) 
         if form.is_valid():
             obj = form.save(commit=False)
 
@@ -347,8 +348,7 @@ def create_deputation(request):
             return redirect("deputation-list")
         # fall-through renders errors
     else:
-        form = DeputationForm(initial=initial)
-
+        form = DeputationForm(initial=initial, request=request)
     return render(
         request,
         "deputation/deputation_form.html",
@@ -362,7 +362,8 @@ def deputation_update(request, pk):
         data = request.POST.copy()
         if data.get("end_date", "").strip() == "":
             data["end_date"] = None
-        form = DeputationForm(data, instance=instance)
+        # form = DeputationForm(data, instance=instance)
+        form = DeputationForm(data, instance=instance, request=request) 
         if form.is_valid():
             obj = form.save(commit=False)
             if hasattr(obj, "company_id") and not obj.company_id and obj.employee_id:
@@ -379,7 +380,8 @@ def deputation_update(request, pk):
             messages.success(request, _("Deputation updated successfully."))
             return redirect("deputation-list")
     else:
-        form = DeputationForm(instance=instance)
+        # form = DeputationForm(instance=instance)
+        form = DeputationForm(instance=instance, request=request) 
 
     return render(
         request,
@@ -400,41 +402,97 @@ def deputation_delete(request, pk):
     return redirect("deputation-list")
 
 
+# @login_required
+# def employee_lookup(request):
+#     emp_id = request.GET.get("employee") or request.GET.get("employee_id")
+#     emp = get_object_or_404(Employee, pk=emp_id) if emp_id else None
+
+#     # Try several likely field names/relations; pick the first that exists
+#     designation = _first(
+#         getattr(emp, "designation", None),
+#         getattr(emp, "job_position", None),
+#         getattr(emp, "position", None),
+#     )
+
+#     original_branch = _first(
+#         _text(getattr(emp, "branch", None)),
+#         _text(getattr(emp, "work_location", None)),
+#         _text(getattr(emp, "office", None)),
+#         _text(getattr(emp, "department", None)),
+#     )
+
+#     email = _first(
+#         getattr(emp, "email", None),
+#         getattr(emp, "official_email", None),
+#         getattr(emp, "work_email", None),
+#         getattr(emp, "personal_email", None),
+#     )
+
+#     current_position = _first(
+#         _text(getattr(emp, "current_position", None)),
+#         designation,  # fallback
+#     )
+
+#     ctx = {
+#         "designation": designation,
+#         "original_branch": original_branch,
+#         "email": email,
+#         "current_position": current_position,
+#     }
+#     return render(request, "deputation/_employee_autofill_fields.html", ctx)
+# views.py (replace employee_lookup with this version)
+# views.py (replace helpers with these)
+
+
+def _label(x):
+    if x is None: return ""
+    if isinstance(x, (str, int, float)): return str(x)
+    # try common label attrs on FK objects
+    for a in ("name","title","job_position","job_role","branch_name","department_name","code"):
+        if hasattr(x, a) and getattr(x, a):
+            return str(getattr(x, a))
+    s = str(x)
+    return "" if s == "None" else s
+
 @login_required
 def employee_lookup(request):
+    """
+    Returns a small HTML fragment prefilled from EmployeeWorkInformation.
+    HTMX GET expects ?employee=<id> (or ?employee_id=).
+    """
     emp_id = request.GET.get("employee") or request.GET.get("employee_id")
-    emp = get_object_or_404(Employee, pk=emp_id) if emp_id else None
+    if not emp_id:
+        return render(request, "deputation/_employee_autofill_fields.html", {
+            "designation": "", "original_branch": "", "email": "", "current_position": "",
+        })
 
-    # Try several likely field names/relations; pick the first that exists
-    designation = _first(
-        _text(getattr(emp, "designation", None)),
-        _text(getattr(emp, "job_position", None)),
-        _text(getattr(emp, "position", None)),
+    emp = get_object_or_404(Employee, pk=emp_id)
+    wi: EmployeeWorkInformation | None = getattr(emp, "employee_work_info", None)
+
+    # If the employee has no work info yet, return blanks (that’s expected for new data)
+    if wi is None:
+        return render(request, "deputation/_employee_autofill_fields.html", {
+            "designation": "", "original_branch": "", "email": "", "current_position": "",
+        })
+
+    # ---- Map from EmployeeWorkInformation ----
+    # job_position_id / job_role_id / department_id are FKs in your codebase
+    designation      = _label(getattr(wi, "job_position_id", None))
+    current_position = _label(getattr(wi, "job_role_id", None)) or designation
+
+    # Location/branch: your WorkInfo has a text field `location` (and also department/company FKs)
+    original_branch  = (
+        getattr(wi, "location", "") or
+        _label(getattr(wi, "department_id", None)) or
+        _label(getattr(wi, "company_id", None))
     )
 
-    original_branch = _first(
-        _text(getattr(emp, "branch", None)),
-        _text(getattr(emp, "work_location", None)),
-        _text(getattr(emp, "office", None)),
-        _text(getattr(emp, "department", None)),
-    )
+    # Official email for work use lives on WorkInformation
+    email = getattr(wi, "email", "") or getattr(emp, "email", "")
 
-    email = _first(
-        getattr(emp, "email", None),
-        getattr(emp, "official_email", None),
-        getattr(emp, "work_email", None),
-        getattr(emp, "personal_email", None),
-    )
-
-    current_position = _first(
-        _text(getattr(emp, "current_position", None)),
-        designation,  # fallback
-    )
-
-    ctx = {
-        "designation": designation,
-        "original_branch": original_branch,
-        "email": email,
-        "current_position": current_position,
-    }
-    return render(request, "deputation/_employee_autofill_fields.html", ctx)
+    return render(request, "deputation/_employee_autofill_fields.html", {
+        "designation": designation or "",
+        "original_branch": original_branch or "",
+        "email": email or "",
+        "current_position": current_position or "",
+    })

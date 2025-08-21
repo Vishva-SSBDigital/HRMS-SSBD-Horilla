@@ -28,10 +28,6 @@
 {# No outer wrapper here; HTMX will replace #employee-details innerHTML with this #}
 {# templates/deputation/_employee_autofill_fields.html #}
 <div class="oh-input-group">
-  <label class="oh-label">Deputation Employee Designation</label>
-  <input type="text" name="designation" class="oh-input" value="{{ designation|default_if_none:'' }}">
-</div>
-<div class="oh-input-group">
   <label class="oh-label">Original Branch (Created)</label>
   <input type="text" name="original_branch" class="oh-input" value="{{ original_branch|default_if_none:'' }}">
 </div>
@@ -43,3 +39,5 @@
   <label class="oh-label">Current Position</label>
   <input type="text" name="current_position" class="oh-input" value="{{ current_position|default_if_none:'' }}">
 </div>
+<input type="hidden" name="designation" id="id_designation_hidden"
+       value="{{ designation|default_if_none:'' }}">

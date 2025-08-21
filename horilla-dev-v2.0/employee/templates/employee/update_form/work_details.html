@@ -1,7 +1,7 @@
 {% load i18n %}
 <div class="oh-wrapper">
   <div
-    class="oh-general__tab-target oh-profile-section mb-4 d-none"
+    class="oh-general__tab-target oh-profile-section mb-4"
     id="work"
     data-select2-id="select2-data-work"
   >
@@ -99,61 +99,128 @@
 <script>
   function onDynamicCreate(value, id) {
     if (value === "create") {
-      $(id).click();
+      $(id).trigger('click');
       return;
     }
 
     let url, dropdownId, createText, emptyText;
-    const data =
-      id === "#dynamicDept" ? { department_id: value } : { job_id: value };
+    const data = id === "#dynamicDept" ? { department_id: value } : { job_id: value };
 
     if (id === "#dynamicDept") {
       url = '{% url "get-job-positions" %}';
       dropdownId = "#id_job_position_id";
       createText = "Create New Job Position";
       emptyText = "---Choose Job Position---";
-      $("#id_job_role_id").html(
-        '<option value="">---Choose Job Role---</option>'
-      );
+      // Reset roles when department changes
+      $("#id_job_role_id").html('<option value="">---Choose Job Role---</option><option value="create">Create New Job Role</option>');
     } else if (id === "#dynamicJobPosition") {
       url = '{% url "get-job-roles" %}';
       dropdownId = "#id_job_role_id";
       createText = "Create New Job Role";
       emptyText = "---Choose Job Role---";
+    } else {
+      return;
     }
+
+    const $dropdown = $(dropdownId);
+    if (!$dropdown.length) return; // element not in DOM
 
     if (value) {
       $.ajax({
-        url: url,
-        method: "GET",
-        data: data,
-        success: function (data) {
-          const dropdown = $(dropdownId);
-          const options = [`<option value="">${emptyText}</option>`];
-
-          $.each(data.job_positions || data.job_roles, function (key, value) {
-            options.push(`<option value="${key}">${value}</option>`);
+        url, method: "GET", data,
+        success: function (resp) {
+          const list = resp.job_positions || resp.job_roles || {};
+          const opts = [`<option value="">${emptyText}</option>`];
+          $.each(list, function (key, val) {
+            opts.push(`<option value="${key}">${val}</option>`);
           });
-
-          options.push(`<option value="create">${createText}</option>`);
-          dropdown.html(options.join(""));
+          opts.push(`<option value="create">${createText}</option>`);
+          $dropdown.html(opts.join(""));
         },
+        error: function () {
+          $dropdown.html(`<option value="">${emptyText}</option>`);
+        }
       });
     } else {
-      const resetOptions = `<option value="">${emptyText}</option><option value="create">${createText}</option>`;
-      $(dropdownId).html(resetOptions);
-
-      if (id === "#dynamicDept") {
-        $("#id_job_role_id").append(
-          $("<option>", {
-            value: "create",
-            text: "Create New Job Role",
-          })
-        );
-      }
+      $dropdown.html(
+        `<option value="">${emptyText}</option><option value="create">${createText}</option>`
+      );
     }
   }
+
+  $(document).ready(function () {
+    // Ensure elements exist (they come from {{ work_form.as_p }})
+    const $dept = $("#id_department_id");
+    const $pos  = $("#id_job_position_id");
+    const $role = $("#id_job_role_id");
+
+    if (!$dept.length || !$pos.length || !$role.length) {
+      console.warn("Expected fields not found. Check your Django form field names: department_id, job_position_id, job_role_id.");
+      return;
+    }
+
+    // Bind change handlers
+    $dept.on("change", function () {
+      onDynamicCreate(this.value, "#dynamicDept");
+    });
+
+    $pos.on("change", function () {
+      onDynamicCreate(this.value, "#dynamicJobPosition");
+    });
+
+    // Initial population
+    const departmentId = $dept.val();
+    const selectedJobPosition = $pos.val();
+    const selectedJobRole = $role.val();
+
+    // Prime Job Positions if department pre-selected
+    if (departmentId) {
+      $.ajax({
+        url: '{% url "get-job-positions" %}',
+        method: "GET",
+        data: { department_id: departmentId },
+        success: function (data) {
+          const opts = ['<option value="">---Choose Job Position---</option>'];
+          $.each(data.job_positions || {}, function (k, v) {
+            opts.push(`<option value="${k}">${v}</option>`);
+          });
+          opts.push('<option value="create">Create New Job Position</option>');
+          $pos.html(opts.join(""));
+          if (selectedJobPosition) $pos.val(selectedJobPosition).trigger("change");
+        },
+        error: function () {
+          $pos.html('<option value="">---Choose Job Position---</option>');
+        }
+      });
+    } else {
+      // Default options when no department chosen
+      $pos.html('<option value="">---Choose Job Position---</option><option value="create">Create New Job Position</option>');
+      $role.html('<option value="">---Choose Job Role---</option><option value="create">Create New Job Role</option>');
+    }
+
+    // Prime Job Roles if job position pre-selected
+    if (selectedJobPosition) {
+      $.ajax({
+        url: '{% url "get-job-roles" %}',
+        method: "GET",
+        data: { job_id: selectedJobPosition },
+        success: function (data) {
+          const opts = ['<option value="">---Choose Job Role---</option>'];
+          $.each(data.job_roles || {}, function (k, v) {
+            opts.push(`<option value="${k}">${v}</option>`);
+          });
+          opts.push('<option value="create">Create New Job Role</option>');
+          $role.html(opts.join(""));
+          if (selectedJobRole) $role.val(selectedJobRole);
+        },
+        error: function () {
+          $role.html('<option value="">---Choose Job Role---</option>');
+        }
+      });
+    }
+  });
 </script>
+
 
 <script>
   $(document).ready(function () {

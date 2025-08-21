@@ -83,7 +83,7 @@ class ModelForm(forms.ModelForm):
                     label = trans(field.label)
                 field.empty_label = trans("---Choose {label}---").format(label=label)
                 field.widget.attrs.update(
-                    {"class": "oh-select oh-select-2 select2-hidden-accessible"}
+                    {"class": "oh-select oh-select-2"}
                 )
             elif isinstance(widget, (forms.Textarea)):
                 if field.label is not None:
@@ -356,7 +356,7 @@ class EmployeeWorkInformationForm(ModelForm):
                             initial=field.initial,
                             widget=forms.Select(
                                 attrs={
-                                    "class": "oh-select oh-select-2 select2-hidden-accessible",
+                                    "class": "oh-select oh-select-2",
                                     "onchange": f'onDynamicCreate(this.value,"{urls.get(field.label)}");',
                                 }
                             ),
@@ -601,7 +601,7 @@ class BulkUpdateFieldForm(forms.Form):
         self.fields["update_fields"].choices = updated_choices
         for visible in self.visible_fields():
             visible.field.widget.attrs["class"] = (
-                "oh-select oh-select-2 select2-hidden-accessible oh-input w-100"
+                "oh-select oh-select-2  oh-input w-100"
             )
 
 
@@ -745,7 +745,7 @@ class DisciplinaryActionForm(ModelForm):
         label=_("Action"),
         widget=forms.Select(
             attrs={
-                "class": "oh-select oh-select-2 select2-hidden-accessible",
+                "class": "oh-select oh-select-2",
                 "onchange": "actionTypeChange($(this))",
             }
         ),

@@ -10,14 +10,22 @@
     {% csrf_token %}
 
     <label class="form-label">{% trans "Employee" %}</label>
-    <select
+    {% comment %} <select
       name="employee_id"
       id="id_employee"
       class="form-select"
       hx-get="{% url 'deputation:employee_lookup' %}"
       hx-trigger="change"
       hx-target="#autofill-fields"
-      hx-include="#id_employee"
+      hx-include="#id_employee" {% endcomment %}
+      <select
+  name="employee_id"
+  id="id_employee"
+  class="form-select"
+  hx-get="{% url 'deputation-employee-lookup' %}"
+  hx-trigger="change"
+  hx-target="#autofill-fields"
+  hx-include="#id_employee"
       hx-indicator="#emp-spinner">
       <option value="">---------</option>
       {% for emp in employees %}
@@ -33,6 +41,50 @@
     <div id="autofill-fields">
       {% include "deputation/_employee_autofill_fields.html" with e=None %}
     </div>
+    <!-- Department dropdown -->
+<div class="mt-3">
+  <label class="form-label">{% trans "Department" %}</label>
+  <select id="id_department" class="form-select">
+    <option value="">---------</option>
+    {% for d in departments %}
+      <option value="{{ d.id }}">{{ d.department }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+<!-- Deputed Designation dropdown -->
+<div class="mt-3">
+  <label class="form-label">{% trans "Deputed Designation" %}</label>
+  <select id="id_deputed_designation" class="form-select">
+    <option value="">---------</option>
+  </select>
+</div>
+<script>
+  (function(){
+    const dept = document.getElementById('id_department');
+    const desg = document.getElementById('id_deputed_designation');
+    if (!dept || !desg) return;
+
+    async function loadPositions(deptId){
+      desg.innerHTML = '<option value="">---------</option>';
+      if(!deptId) return;
+      try {
+        const res = await fetch("{% url 'get-job-positions' %}?department_id=" + encodeURIComponent(deptId),
+          { headers: {"X-Requested-With":"XMLHttpRequest"} }
+        );
+        const data = await res.json();
+        const map = data.job_positions || {};
+        for (const [id,label] of Object.entries(map)) {
+          const opt = document.createElement('option');
+          opt.value = id; opt.textContent = label;
+          desg.appendChild(opt);
+        }
+      } catch(e) { /* leave empty on error */ }
+    }
+
+    dept.addEventListener('change', () => loadPositions(dept.value));
+  })();
+</script>
 
     <div class="row mt-3">
       <div class="col-md-6">
