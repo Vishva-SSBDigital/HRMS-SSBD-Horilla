@@ -1,0 +1,149 @@
+{% comment %} {% load i18n %}
+<div class="oh-modal__dialog-body" id="PromotionModalTarget">
+  <form
+    method="post"
+    class="oh-form"
+    hx-post="{% if is_update %}{% url 'promotion:update' instance.id %}{% else %}{% url 'promotion:create' %}{% endif %}"
+    hx-target="#PromotionModalTarget"
+    hx-swap="innerHTML"
+  >
+    {% csrf_token %}
+
+    <div class="oh-grid oh-grid--2">
+      <!-- Employee lookup -->
+      <div class="oh-input-group">
+        <label class="oh-label">{% trans "Employee" %}</label>
+        {{ form.employee }}
+        {% for e in form.employee.errors %}<div class="oh-input__error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <!-- Proposed Status -->
+      <div class="oh-input-group">
+        <label class="oh-label">{% trans "Proposed Employee Status" %}</label>
+        {{ form.proposed_status }}
+        {% for e in form.proposed_status.errors %}<div class="oh-input__error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <!-- Proposed Designation -->
+      <div class="oh-input-group" style="grid-column:1/-1">
+        <label class="oh-label">{% trans "Proposed Employee New Grade/Designation" %}</label>
+        {{ form.proposed_designation }}
+        {% for e in form.proposed_designation.errors %}<div class="oh-input__error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <!-- Auto-filled employee details -->
+      <div id="promo-emp-details" class="oh-grid oh-grid--2" style="grid-column: 1/-1">
+        {% include "promotion/_employee_autofill_fields.html" with employee=None lb=None %}
+      </div>
+
+      <!-- Auto Calculations (Adjusted leave + Basic) -->
+      <div id="promo-proposal-fields" class="oh-grid oh-grid--2" style="grid-column: 1/-1">
+        {% include "promotion/_proposal_fields.html" with adjusted=None proposed_basic=None %}
+      </div>
+
+      <!-- Effective from -->
+      <div class="oh-input-group">
+        <label class="oh-label">{{ form.effective_from.label }}</label>
+        {{ form.effective_from }}
+        {% for e in form.effective_from.errors %}<div class="oh-input__error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <!-- hidden snapshots -->
+      {{ form.current_status }} {{ form.current_designation }}
+      {{ form.current_cl }} {{ form.current_pl }} {{ form.current_sl }}
+      {{ form.adjusted_cl }} {{ form.adjusted_pl }} {{ form.adjusted_sl }}
+      {{ form.proposed_basic_salary }}
+    </div>
+
+    <div class="oh-modal__dialog-footer mt-2">
+      <button type="submit" class="oh-btn oh-btn--secondary oh-btn--shadow">{% trans "Save" %}</button>
+      <button type="button" class="oh-btn oh-btn--light" id="promoCancelBtn">{% trans "Cancel" %}</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  function closePromotionModal() {
+    const modal = document.getElementById('PromotionModal');
+    if (modal) modal.style.display = 'none';
+  }
+  document.getElementById('promoCancelBtn')?.addEventListener('click', closePromotionModal);
+
+  document.body.addEventListener("promotion:created", function() {
+    closePromotionModal();
+    location.reload();
+  });
+  document.body.addEventListener("promotion:updated", function() {
+    closePromotionModal();
+    location.reload();
+  });
+</script> {% endcomment %}
+
+
+{% load i18n %}
+<div class="oh-modal__dialog-body" id="PromotionModalTarget">
+  <form
+    method="post"
+    class="oh-form"
+    hx-post="{% if is_update %}{% url 'promotion:update' instance.id %}{% else %}{% url 'promotion:create' %}{% endif %}"
+    hx-target="#PromotionModalTarget"
+    hx-swap="innerHTML"
+  >
+    {% csrf_token %}
+
+    <div class="oh-grid oh-grid--2">
+      <!-- Employee -->
+      <div class="oh-input-group">
+        <label class="oh-label">{% trans "Employee" %}</label>
+        {{ form.employee }}
+      </div>
+
+      <!-- Department (populated + selected via OOB swap on employee change) -->
+      <div class="oh-input-group">
+        <label class="oh-label">{% trans "Department" %}</label>
+        {{ form.department }}
+      </div>
+
+      <!-- Proposed Designation -->
+      <div class="oh-input-group" style="grid-column:1/-1">
+        <label class="oh-label">{% trans "Proposed Employee New Grade/Designation" %}</label>
+        {{ form.proposed_designation }}
+      </div>
+
+      <!-- Auto-filled employee details -->
+      <div id="promo-emp-details" class="oh-grid oh-grid--2" style="grid-column:1/-1">
+        {% include "promotion/_employee_autofill_fields.html" with employee=None lb=None %}
+      </div>
+
+      <!-- Auto-calculated proposal -->
+      <div id="promo-proposal-fields" class="oh-grid oh-grid--2" style="grid-column:1/-1">
+        {% include "promotion/_proposal_fields.html" with adjusted=None proposed_basic=None %}
+      </div>
+
+      <!-- Effective from -->
+      <div class="oh-input-group">
+        <label class="oh-label">{{ form.effective_from.label }}</label>
+        {{ form.effective_from }}
+      </div>
+
+      <!-- hidden snapshots -->
+      {{ form.current_status }} {{ form.current_designation }}
+      {{ form.current_cl }} {{ form.current_pl }} {{ form.current_sl }}
+      {{ form.adjusted_cl }} {{ form.adjusted_pl }} {{ form.adjusted_sl }}
+      {{ form.proposed_basic_salary }}
+    </div>
+
+    <div class="oh-modal__dialog-footer mt-2">
+      <button type="submit" class="oh-btn oh-btn--secondary oh-btn--shadow">{% trans "Save" %}</button>
+      <button type="button" class="oh-btn oh-btn--light" id="promoCancelBtn">{% trans "Cancel" %}</button>
+    </div>
+  </form>
+</div>
+<script>
+  document.getElementById('promoCancelBtn')?.addEventListener('click', () => {
+    const modal = document.getElementById('PromotionModal');
+    if (modal) modal.style.display = 'none';
+  });
+  document.body.addEventListener("promotion:created", () => { location.reload(); });
+  document.body.addEventListener("promotion:updated", () => { location.reload(); });
+</script>

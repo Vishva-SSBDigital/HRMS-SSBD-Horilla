@@ -1,0 +1,51 @@
+{% if employee %}
+  <input type="hidden" name="employee" value="{{ employee.pk }}">
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">Name</label>
+      <input class="form-control" value="{{ employee.name }}" readonly>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Current Employee Status</label>
+      <input class="form-control" value="{{ employee.get_status_display }}" readonly>
+      <input type="hidden" name="current_status" value="{{ employee.status }}">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Current Grade/Designation</label>
+      <input class="form-control" value="{{ employee.designation.name }}" readonly>
+      <input type="hidden" name="current_designation" value="{{ employee.designation_id }}">
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <label class="form-label">Current Leave Position</label>
+    <div class="row g-2">
+      <div class="col">
+        <div class="input-group">
+          <span class="input-group-text">CL</span>
+          <input class="form-control" value="{{ lb.cl_balance|default:0 }}" readonly>
+          <input type="hidden" name="current_cl" value="{{ lb.cl_balance|default:0 }}">
+        </div>
+      </div>
+      <div class="col">
+        <div class="input-group">
+          <span class="input-group-text">PL</span>
+          <input class="form-control" value="{{ lb.pl_balance|default:0 }}" readonly>
+          <input type="hidden" name="current_pl" value="{{ lb.pl_balance|default:0 }}">
+        </div>
+      </div>
+      <div class="col">
+        <div class="input-group">
+          <span class="input-group-text">SL</span>
+          <input class="form-control" value="{{ lb.sl_balance|default:0 }}" readonly>
+          <input type="hidden" name="current_sl" value="{{ lb.sl_balance|default:0 }}">
+        </div>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <div class="text-danger">Employee not found</div>
+{% endif %}

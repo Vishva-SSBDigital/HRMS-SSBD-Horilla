@@ -1,0 +1,44 @@
+
+{% load i18n %}
+
+{# --- existing current status/designation/leave readonly fields here --- #}
+<div class="oh-input-group">
+  <label class="oh-label">{% trans "Current Status" %}</label>
+  <input class="oh-input" value="{{ employee.get_status_display|default:'' }}" readonly>
+  <input type="hidden" name="current_status" value="{{ employee.status|default:'' }}">
+</div>
+
+<div class="oh-input-group">
+  <label class="oh-label">{% trans "Current Designation" %}</label>
+  <input class="oh-input" value="{{ employee.designation.name|default:'' }}" readonly>
+  <input type="hidden" name="current_designation" value="{{ employee.designation_id|default:'' }}">
+</div>
+
+<div class="oh-input-group">
+  <label class="oh-label">{% trans "Current Leave (CL)" %}</label>
+  <input class="oh-input" value="{{ lb.cl_balance|default:0 }}" readonly>
+  <input type="hidden" name="current_cl" value="{{ lb.cl_balance|default:0 }}">
+</div>
+
+<div class="oh-input-group">
+  <label class="oh-label">{% trans "Current Leave (PL)" %}</label>
+  <input class="oh-input" value="{{ lb.pl_balance|default:0 }}" readonly>
+  <input type="hidden" name="current_pl" value="{{ lb.pl_balance|default:0 }}">
+</div>
+
+<div class="oh-input-group">
+  <label class="oh-label">{% trans "Current Leave (SL)" %}</label>
+  <input class="oh-input" value="{{ lb.sl_balance|default:0 }}" readonly>
+  <input type="hidden" name="current_sl" value="{{ lb.sl_balance|default:0 }}">
+</div>
+
+{# --- OOB swap: refresh the Department select with the employee’s department selected --- #}
+<select id="id_department" name="department" class="oh-input oh-select" hx-swap-oob="true" style="display:none">
+  <option value="">---------</option>
+  {% for d in departments %}
+    {# adjust display field: d.department / d.name #}
+    <option value="{{ d.id }}" {% if d.id == employee.department_id %}selected{% endif %}>
+      {{ d.department }}
+    </option>
+  {% endfor %}
+</select>

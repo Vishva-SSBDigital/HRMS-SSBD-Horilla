@@ -46,6 +46,7 @@ if SETTINGS_EMAIL_BACKEND:
 
 SIDEBARS = [
     "deputation",
+    "promotion",
     "recruitment",
     "onboarding",
     "employee",

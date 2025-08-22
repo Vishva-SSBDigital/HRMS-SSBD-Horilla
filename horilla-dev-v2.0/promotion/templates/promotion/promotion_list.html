@@ -1,0 +1,184 @@
+{% extends 'index.html' %}
+{% load static i18n %}
+
+{% block content %}
+<main :class="sidebarOpen ? 'oh-main__sidebar-visible' : ''" id="promotion-page">
+  {% if messages %}
+    <div class="oh-alert oh-alert--success">
+      {% for message in messages %}<p>{{ message }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- BREADCRUMB + TITLE -->
+  <div class="oh-wrapper">
+    <div class="oh-breadcrumbs">
+      <a href="#" class="oh-breadcrumbs__item">Horilla</a>
+      <span class="oh-breadcrumbs__item">{% trans "promotion" %}</span>
+      <span class="oh-breadcrumbs__item oh-breadcrumbs__item--current">{% trans "employee" %}</span>
+    </div>
+    <h2 class="oh-page-title">{% trans "Employees" %} → {% trans "Promotions" %}</h2>
+  </div>
+
+  <!-- TOOLBAR -->
+  <section class="oh-wrapper mt-3">
+    <div class="oh-toolbar d-flex align-items-center gap-2 flex-wrap">
+      <button class="oh-btn oh-btn--light">
+        {% trans "Select" %} (<span id="selectedCount">0</span>)
+      </button>
+
+      <form method="get" class="d-flex align-items-center gap-2 ms-auto">
+        <div class="oh-input-group oh-input__search-group dp-search">
+          <input type="search" class="oh-input oh-input__icon"
+                 name="q" value="{{ q }}" placeholder="{% trans 'Search' %}">
+        </div>
+        <select class="oh-input hide-md" name="status" style="height:36px;">
+          <option value="all"     {% if status == 'all' %}selected{% endif %}>{% trans "All" %}</option>
+          <option value="pending" {% if status == 'pending' %}selected{% endif %}>{% trans "Pending" %}</option>
+          <option value="applied" {% if status == 'applied' %}selected{% endif %}>{% trans "Applied" %}</option>
+        </select>
+        <button class="oh-btn oh-btn--light" type="submit">{% trans "See" %}</button>
+      </form>
+
+      <a class="oh-btn oh-btn--secondary oh-btn--shadow"
+         data-toggle="oh-modal-toggle"
+         data-target="#PromotionModal"
+         hx-get="{% url 'promotion:create' %}"
+         hx-target="#PromotionModalTarget">
+        <ion-icon class="me-1" name="add-outline"></ion-icon> {% trans "Create" %}
+      </a>
+    </div>
+  </section>
+
+  <!-- TABLE -->
+  <section class="oh-wrapper" style="margin-top:.5rem;">
+    <div class="oh-card">
+      <div class="oh-card__body">
+        <div class="dp-table-wrap">
+          <table class="dp-table">
+            <colgroup>
+              <col style="width:46px">
+              <col style="min-width:240px">
+              <col style="min-width:160px">
+              <col style="min-width:160px">
+              <col style="min-width:140px">
+              <col style="min-width:120px">
+              <col style="width:120px">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="sticky-col-1">
+                  <input type="checkbox" class="oh-input oh-input__checkbox" id="chkAll" aria-label="Select all">
+                </th>
+                <th class="sticky-col-2">{% trans "Employee" %}</th>
+                <th class="hide-lg">{% trans "From Designation" %}</th>
+                <th class="hide-lg">{% trans "To Designation" %}</th>
+                <th class="hide-md">{% trans "Effective From" %}</th>
+                <th>{% trans "Applied" %}</th>
+                <th>{% trans "Actions" %}</th>
+              </tr>
+            </thead>
+            <tbody id="PromotionList">
+              {% for p in page_obj.object_list %}
+              <tr>
+                <td class="sticky-col-1 center">
+                  <input type="checkbox" class="oh-input oh-input__checkbox rowChk" value="{{ p.id }}">
+                </td>
+                <td class="sticky-col-2 center">
+                  <div class="emp-meta">
+                    <div class="emp-name ellipsis" title="{{ p.employee }}">{{ p.employee }}</div>
+                  </div>
+                </td>
+                <td class="hide-lg ellipsis" title="{{ p.current_designation }}">{{ p.current_designation }}</td>
+                <td class="hide-lg ellipsis" title="{{ p.proposed_designation }}">{{ p.proposed_designation }}</td>
+                <td class="hide-md nowrap">{{ p.effective_from }}</td>
+                <td>
+                  {% if p.applied %}
+                    <span class="oh-badge oh-badge--success oh-badge--soft">{% trans "Yes" %}</span>
+                  {% else %}
+                    <span class="oh-badge oh-badge--secondary oh-badge--soft">{% trans "No" %}</span>
+                  {% endif %}
+                </td>
+                <td class="center">
+                  <div class="oh-btn-group btn-icons">
+                    <a class="oh-btn oh-btn--light-bkg oh-btn--icon"
+                       data-toggle="oh-modal-toggle"
+                       data-target="#PromotionModal"
+                       hx-get="{% url 'promotion:update' p.id %}"
+                       hx-target="#PromotionModalTarget"
+                       title="{% trans 'Amend' %}">
+                      <ion-icon name="create-outline" aria-hidden="true"></ion-icon>
+                    </a>
+                    <form
+                      hx-post="{% url 'promotion:delete' p.id %}"
+                      hx-confirm="{% trans 'Delete this promotion?' %}"
+                      hx-target="closest tr"
+                      hx-swap="outerHTML:remove"
+                      onsubmit="event.stopPropagation();"
+                      style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="oh-btn oh-btn--danger-outline oh-btn--icon"
+                              title="{% trans 'Delete' %}">
+                        <ion-icon name="trash-outline" aria-hidden="true"></ion-icon>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="empty">
+                  <img src="{% static 'images/ui/project/task.png' %}" alt="">
+                  <div class="oh-404__subtitle">
+                    {% trans "There are currently no promotions; please create a new one." %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if page_obj.paginator.num_pages > 1 %}
+          <div class="oh-pagination mt-3" style="justify-content:flex-end;">
+            {% if page_obj.has_previous %}
+              <a class="oh-pagination__link" href="?q={{ q }}&status={{ status }}&page={{ page_obj.previous_page_number }}">&laquo;</a>
+            {% endif %}
+            <span class="oh-pagination__current">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+              <a class="oh-pagination__link" href="?q={{ q }}&status={{ status }}&page={{ page_obj.next_page_number }}">&raquo;</a>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL TARGET -->
+<div class="oh-modal" id="PromotionModal" role="dialog" aria-hidden="true">
+  <div class="oh-modal__dialog" style="max-width: 760px" id="PromotionModalTarget"></div>
+</div>
+
+<style>
+  #promotion-page .dp-table-wrap{ width:100%; overflow:auto; border:1px solid #eef0f4; border-radius:12px; background:#fff; }
+  #promotion-page .dp-table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; font-size:14px; }
+  #promotion-page .dp-table thead th{ position:sticky; top:0; z-index:5; background:#fff; font-weight:600; padding:10px 12px; border-bottom:1px solid #eef0f4; text-align:left!important; }
+  #promotion-page .dp-table tbody td{ padding:10px 12px; border-bottom:1px solid #f2f4f8; vertical-align:middle; height:44px; background:#fff; }
+  .sticky-col-1{ position:sticky; left:0; background:#fff; z-index:6; }
+  .sticky-col-2{ position:sticky; left:46px; background:#fff; z-index:6; }
+  .center{ text-align:center; }
+  .ellipsis{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nowrap{ white-space:nowrap; }
+  .dp-search{ width:280px; }
+  @media (max-width: 992px){ .dp-search{ width:220px; } }
+</style>
+
+<script>
+  const chkAll = document.getElementById('chkAll');
+  const selectedCountEl = document.getElementById('selectedCount');
+  const rows = () => document.querySelectorAll('.rowChk');
+  function refreshCount(){ selectedCountEl.textContent = [...rows()].filter(cb => cb.checked).length; }
+  chkAll?.addEventListener('change', () => { rows().forEach(cb => cb.checked = chkAll.checked); refreshCount(); });
+  document.addEventListener('change', e => { if (e.target.classList?.contains('rowChk')) refreshCount(); });
+</script>
+{% endblock content %}

@@ -61,9 +61,10 @@ INSTALLED_APPS = [
     "simple_history",
     "django_filters",
     "base",
+    
     THEME_APP,
     "deputation",
-    
+    "promotion",
     "employee",
     "recruitment",
     "leave",

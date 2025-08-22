@@ -1,0 +1,52 @@
+{% comment %} <div class="row g-2">
+  <div class="col">
+    <label class="form-label">Adjusted Leave Position (Auto)</label>
+    <div class="row g-2">
+      <div class="col">
+        <div class="input-group">
+          <span class="input-group-text">CL</span>
+          <input class="form-control" name="adjusted_cl" value="{{ adjusted.cl|default:0 }}" readonly>
+        </div>
+      </div>
+      <div class="col">
+        <div class="input-group">
+          <span class="input-group-text">PL</span>
+          <input class="form-control" name="adjusted_pl" value="{{ adjusted.pl|default:0 }}" readonly>
+        </div>
+      </div>
+      <div class="col">
+        <div class="input-group">
+          <span class="input-group-text">SL</span>
+          <input class="form-control" name="adjusted_sl" value="{{ adjusted.sl|default:0 }}" readonly>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <label class="form-label">Proposed Basic Salary (by designation)</label>
+    <input class="form-control" name="proposed_basic_salary" value="{{ proposed_basic|default:'0.00' }}" readonly>
+  </div>
+</div> {% endcomment %}
+
+{% load i18n %}
+
+<div class="oh-input-group">
+  <label class="oh-label">{% trans "Adjusted Leave (CL)" %}</label>
+  <input class="oh-input" name="adjusted_cl" value="{{ adjusted.cl|default:0 }}" readonly>
+</div>
+
+<div class="oh-input-group">
+  <label class="oh-label">{% trans "Adjusted Leave (PL)" %}</label>
+  <input class="oh-input" name="adjusted_pl" value="{{ adjusted.pl|default:0 }}" readonly>
+</div>
+
+<div class="oh-input-group">
+  <label class="oh-label">{% trans "Adjusted Leave (SL)" %}</label>
+  <input class="oh-input" name="adjusted_sl" value="{{ adjusted.sl|default:0 }}" readonly>
+</div>
+
+<div class="oh-input-group">
+  <label class="oh-label">{% trans "Proposed Basic Salary (by designation)" %}</label>
+  <input class="oh-input" name="proposed_basic_salary" value="{{ proposed_basic|default:'0.00' }}" readonly>
+</div>
