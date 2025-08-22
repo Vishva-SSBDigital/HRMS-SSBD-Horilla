@@ -199,6 +199,10 @@ MESSAGE_TAGS = {
 
 
 CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = [
+    "https://hrms.ssbi.tech",
+]
+ 
 
 LOGIN_URL = "/login"
 
