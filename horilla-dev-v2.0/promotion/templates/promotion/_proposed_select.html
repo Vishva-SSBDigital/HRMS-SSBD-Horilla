@@ -1,0 +1,14 @@
+<select
+  id="id_proposed_designation"
+  name="proposed_designation"
+  class="oh-input"
+  hx-get="{% url 'promotion:designation_details' %}"
+  hx-target="#promo-proposal-fields"
+  hx-trigger="change"
+  hx-include="closest form"
+>
+  <option value="">---------</option>
+  {% for pk,label in options %}
+    <option value="{{ pk }}">{{ label }}</option>
+  {% endfor %}
+</select>

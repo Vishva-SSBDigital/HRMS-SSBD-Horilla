@@ -519,6 +519,7 @@
 
 
 from decimal import Decimal
+from django.db.models import Q
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -541,12 +542,18 @@ from .models import (
     LeaveEntitlement,
     SalaryBand,
 )
+
 def _designation_for_jobposition(jp):
-    name = getattr(jp, "job_position", None) or getattr(jp, "name", None)
+    """
+    Map JobPosition to a Designation by the position's display name.
+    Creates the Designation if missing, so Promotion FK stays valid.
+    """
+    name = getattr(jp, "job_position", None) or getattr(jp, "title", None)
     if not name:
         return None
     desig, _ = Designation.objects.get_or_create(name=name)
     return desig
+
 
 def _render_proposed_select(request, pairs, selected=""):
     url = reverse("promotion:designation_details")
@@ -581,23 +588,49 @@ def _label(x):
 def _pk(x):
     return getattr(x, "pk", "") if x else ""
 
+# class PromotionListView(LoginRequiredMixin, ListView):
+#     model = Promotion
+#     template_name = "promotion/promotion_list.html"
+#     context_object_name = "page_obj"
+#     paginate_by = 20
+
+#     def get_queryset(self):
+#         qs = Promotion.objects.select_related(
+#             "employee", "current_designation", "proposed_designation"
+#         ).order_by("-created_at")
+
+#         q = self.request.GET.get("q") or ""
+#         status = self.request.GET.get("status") or "all"
+
+#         if q:
+#             qs = qs.filter(employee__name__icontains=q)
+
+#         if status == "applied":
+#             qs = qs.filter(applied=True)
+#         elif status == "pending":
+#             qs = qs.filter(applied=False)
+#         return qs
+
+#     def get_context_data(self, **kwargs):
+#         ctx = super().get_context_data(**kwargs)
+#         ctx["q"] = self.request.GET.get("q") or ""
+#         ctx["status"] = self.request.GET.get("status") or "all"
+#         ctx["per_page"] = self.paginate_by
+#         return ctx
 class PromotionListView(LoginRequiredMixin, ListView):
     model = Promotion
     template_name = "promotion/promotion_list.html"
-    context_object_name = "page_obj"
-    paginate_by = 20
+    paginate_by = 20                  # ← keep this
+    # context_object_name = "page_obj"  ← REMOVE this line
 
     def get_queryset(self):
-        qs = Promotion.objects.select_related(
-            "employee", "current_designation", "proposed_designation"
-        ).order_by("-created_at")
-
+        qs = (Promotion.objects
+              .select_related("employee", "current_designation", "proposed_designation")
+              .order_by("-created_at"))
         q = self.request.GET.get("q") or ""
         status = self.request.GET.get("status") or "all"
-
         if q:
             qs = qs.filter(employee__name__icontains=q)
-
         if status == "applied":
             qs = qs.filter(applied=True)
         elif status == "pending":
@@ -610,7 +643,6 @@ class PromotionListView(LoginRequiredMixin, ListView):
         ctx["status"] = self.request.GET.get("status") or "all"
         ctx["per_page"] = self.paginate_by
         return ctx
-
 
 # --- helpers ---------------------------------------------------------
 
@@ -813,30 +845,84 @@ def designation_details(request):
 #         label = getattr(p, "job_position", None) or getattr(p, "name", f"Position #{p.pk}")
 #         options.append(f'<option value="{p.pk}">{label}</option>')
 #     return HttpResponse("".join(options))
+# @login_required
+# def positions_for_department(request):
+#     dep = (request.GET.get("department") or "").strip()
+#     if not dep:
+#         return HttpResponse(_render_proposed_select(request, []))
+#     try:
+#         dep_id = int(dep)
+#     except ValueError:
+#         return HttpResponseBadRequest("invalid department")
+
+#     qs = JobPosition.objects.filter(
+#         models.Q(department_id=dep_id) | models.Q(department__id=dep_id)
+#     ).select_related("department").order_by("job_position", "name", "id")
+
+#     pairs = []
+#     for p in qs:
+#         desig = _designation_for_jobposition(p)
+#         if not desig:
+#             continue
+#         pos_name = getattr(p, "job_position", None) or getattr(p, "name", f"Position #{p.pk}")
+#         dept_obj = getattr(p, "department", None) or getattr(p, "department_id", None)
+#         dept_label = getattr(dept_obj, "department", None) or getattr(dept_obj, "name", "")
+#         label = f"{pos_name} - ({dept_label} Dept)" if dept_label else pos_name
+#         # value must be a Designation PK (your FK)
+#         pairs.append((desig.pk, label))
+
+#     return HttpResponse(_render_proposed_select(request, pairs))
+
 @login_required
 def positions_for_department(request):
-    dep = (request.GET.get("department") or "").strip()
-    if not dep:
-        return HttpResponse(_render_proposed_select(request, []))
+    dep_val = (request.GET.get("department") or "").strip()
+    if not dep_val:
+        return render(request, "promotion/_proposed_select.html", {"options": []})
+
+    # Resolve Department either by id or by its "department" text field
+    dep_obj = None
+    if dep_val.isdigit():
+        dep_obj = Department.objects.filter(pk=int(dep_val)).first()
+    if not dep_obj:
+        dep_obj = Department.objects.filter(department__iexact=dep_val).first()
+
+    # Start from all positions
+    qs = JobPosition.objects.all()
+    found = False
+
+    if dep_obj:
+        # Find any FK on JobPosition pointing to Department (e.g. "department_id", "department")
+        fk_fields = [
+            f.name for f in JobPosition._meta.get_fields()
+            if getattr(f, "remote_field", None) and f.remote_field.model == Department
+        ]
+        if fk_fields:
+            q = Q()
+            for fname in fk_fields:
+                # Support both passing object and id
+                q |= Q(**{fname: dep_obj}) | Q(**{f"{fname}__id": dep_obj.id})
+            qs = qs.filter(q)
+            found = qs.exists()
+
+    # If nothing matched, don't crash—show all positions so the dropdown isn't empty
+    if not found:
+        qs = JobPosition.objects.all()
+
+    # SAFE ordering: your model has "job_position", not "name"
     try:
-        dep_id = int(dep)
-    except ValueError:
-        return HttpResponseBadRequest("invalid department")
+        qs = qs.order_by("job_position", "id")
+    except Exception:
+        qs = qs.order_by("id")
 
-    qs = JobPosition.objects.filter(
-        models.Q(department_id=dep_id) | models.Q(department__id=dep_id)
-    ).select_related("department").order_by("job_position", "name", "id")
-
-    pairs = []
+    # Build (value,label) pairs: value = Designation.pk; label = "Position - (Dept)"
+    dept_label = (getattr(dep_obj, "department", "") if dep_obj else "").strip()
+    options = []
     for p in qs:
         desig = _designation_for_jobposition(p)
         if not desig:
             continue
-        pos_name = getattr(p, "job_position", None) or getattr(p, "name", f"Position #{p.pk}")
-        dept_obj = getattr(p, "department", None) or getattr(p, "department_id", None)
-        dept_label = getattr(dept_obj, "department", None) or getattr(dept_obj, "name", "")
+        pos_name = getattr(p, "job_position", None) or getattr(p, "title", None) or f"Position #{p.pk}"
         label = f"{pos_name} - ({dept_label} Dept)" if dept_label else pos_name
-        # value must be a Designation PK (your FK)
-        pairs.append((desig.pk, label))
+        options.append((desig.pk, label))
 
-    return HttpResponse(_render_proposed_select(request, pairs))
+    return render(request, "promotion/_proposed_select.html", {"options": options})
