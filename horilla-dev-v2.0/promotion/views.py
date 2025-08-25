@@ -354,38 +354,38 @@ def _default_basic_for(designation):
 # Returns JSON with rendered partial for autofill block
 # -------------------------------------------------------------------
 
-@login_required
-def employee_lookup(request):
-    emp_pk = request.GET.get("employee")
-    emp_code = (request.GET.get("employee_id") or "").strip()
+# @login_required
+# def employee_lookup(request):
+#     emp_pk = request.GET.get("employee")
+#     emp_code = (request.GET.get("employee_id") or "").strip()
 
-    employee = None
-    if emp_pk:
-        try:
-            employee = Employee.objects.select_related("designation").get(pk=emp_pk)
-        except Employee.DoesNotExist:
-            employee = None
-    elif emp_code:
-        try:
-            employee = Employee.objects.select_related("designation").get(
-                employee_id=emp_code
-            )
-        except Employee.DoesNotExist:
-            employee = None
+#     employee = None
+#     if emp_pk:
+#         try:
+#             employee = Employee.objects.select_related("designation").get(pk=emp_pk)
+#         except Employee.DoesNotExist:
+#             employee = None
+#     elif emp_code:
+#         try:
+#             employee = Employee.objects.select_related("designation").get(
+#                 employee_id=emp_code
+#             )
+#         except Employee.DoesNotExist:
+#             employee = None
 
-    if not employee:
-        return JsonResponse(
-            {"ok": False, "html": "<div class='oh-input__error'>Employee not found</div>"}
-        )
+#     if not employee:
+#         return JsonResponse(
+#             {"ok": False, "html": "<div class='oh-input__error'>Employee not found</div>"}
+#         )
 
-    lb = LeaveBalance.objects.filter(employee=employee).first()
+#     lb = LeaveBalance.objects.filter(employee=employee).first()
 
-    html = render_to_string(
-        "promotion/_employee_autofill_fields.html",
-        {"employee": employee, "lb": lb},
-        request=request,
-    )
-    return JsonResponse({"ok": True, "html": html})
+#     html = render_to_string(
+#         "promotion/_employee_autofill_fields.html",
+#         {"employee": employee, "lb": lb},
+#         request=request,
+#     )
+#     return JsonResponse({"ok": True, "html": html})
 
 
 # -------------------------------------------------------------------
@@ -418,55 +418,112 @@ def designation_details(request):
     )
     return JsonResponse({"ok": True, "html": html})
 
+# @login_required
+# def employee_lookup(request):
+#     emp_pk = request.GET.get("employee")
+#     emp_code = (request.GET.get("employee_id") or "").strip()
+
+#     employee = None
+#     if emp_pk:
+#         try:
+#             employee = Employee.objects.select_related("designation", "department").get(pk=emp_pk)
+#         except Employee.DoesNotExist:
+#             employee = None
+#     elif emp_code:
+#         try:
+#             employee = Employee.objects.select_related("designation", "department").get(employee_id=emp_code)
+#         except Employee.DoesNotExist:
+#             employee = None
+
+#     if not employee:
+#         return HttpResponse("<div class='oh-input__error'>Employee not found</div>")
+
+#     lb = LeaveBalance.objects.filter(employee=employee).first()
+#     departments = Department.objects.all().order_by("department")  # or "name"
+
+#     html = render_to_string(
+#         "promotion/_employee_autofill_fields.html",
+#         {"employee": employee, "lb": lb, "departments": departments},
+#         request=request,
+#     )
+#     return HttpResponse(html)
+
+# @login_required
+# def designation_details(request):
+#     try:
+#         desig_id = int(request.GET.get("proposed_designation"))
+#         emp_pk = int(request.GET.get("employee"))
+#     except (TypeError, ValueError):
+#         return HttpResponseBadRequest("Invalid parameters")
+
+#     employee = get_object_or_404(Employee, pk=emp_pk)
+#     new_desig = get_object_or_404(Designation, pk=desig_id)
+#     lb = LeaveBalance.objects.filter(employee=employee).first()
+#     ent = LeaveEntitlement.objects.filter(designation=new_desig).first()
+
+#     adjusted = _compute_adjusted_leave(lb, ent)
+#     proposed_basic = _default_basic_for(new_desig)
+
+#     html = render_to_string(
+#         "promotion/_proposal_fields.html",
+#         {"adjusted": adjusted, "proposed_basic": proposed_basic},
+#         request=request,
+#     )
+#     return HttpResponse(html)
+
+# REMOVE the earlier JsonResponse version of employee_lookup entirely.
+
 @login_required
 def employee_lookup(request):
     emp_pk = request.GET.get("employee")
     emp_code = (request.GET.get("employee_id") or "").strip()
 
     employee = None
+    # Use your actual employee model that has designation; department might be elsewhere
+    sel = Employee.objects.select_related("designation")
+    # If your Employee does have a department FK, you can add "department" to select_related above.
+
     if emp_pk:
         try:
-            employee = Employee.objects.select_related("designation", "department").get(pk=emp_pk)
+            employee = sel.get(pk=emp_pk)
         except Employee.DoesNotExist:
             employee = None
     elif emp_code:
         try:
-            employee = Employee.objects.select_related("designation", "department").get(employee_id=emp_code)
+            employee = sel.get(employee_id=emp_code)
         except Employee.DoesNotExist:
             employee = None
 
     if not employee:
         return HttpResponse("<div class='oh-input__error'>Employee not found</div>")
 
+    # Leave balance (your model already imported)
     lb = LeaveBalance.objects.filter(employee=employee).first()
-    departments = Department.objects.all().order_by("department")  # or "name"
+
+    # Department list for the OOB select swap
+    departments = Department.objects.all().order_by("department")
+
+    # Compute a SAFE department id to preselect in the OOB <select>
+    # Try Employee.department first; else try EmployeeWorkInformation.department_id
+    emp_dept_id = None
+    if hasattr(employee, "department_id") and employee.department_id:
+        emp_dept_id = employee.department_id
+    else:
+        # If department is in EmployeeWorkInformation as shown in your first message:
+        ewi = getattr(employee, "employee_work_info", None)
+        if ewi and getattr(ewi, "department_id_id", None):
+            emp_dept_id = ewi.department_id_id
+        elif ewi and getattr(ewi, "department_id", None):
+            emp_dept_id = ewi.department_id.pk if ewi.department_id else None
 
     html = render_to_string(
         "promotion/_employee_autofill_fields.html",
-        {"employee": employee, "lb": lb, "departments": departments},
-        request=request,
-    )
-    return HttpResponse(html)
-
-@login_required
-def designation_details(request):
-    try:
-        desig_id = int(request.GET.get("proposed_designation"))
-        emp_pk = int(request.GET.get("employee"))
-    except (TypeError, ValueError):
-        return HttpResponseBadRequest("Invalid parameters")
-
-    employee = get_object_or_404(Employee, pk=emp_pk)
-    new_desig = get_object_or_404(Designation, pk=desig_id)
-    lb = LeaveBalance.objects.filter(employee=employee).first()
-    ent = LeaveEntitlement.objects.filter(designation=new_desig).first()
-
-    adjusted = _compute_adjusted_leave(lb, ent)
-    proposed_basic = _default_basic_for(new_desig)
-
-    html = render_to_string(
-        "promotion/_proposal_fields.html",
-        {"adjusted": adjusted, "proposed_basic": proposed_basic},
+        {
+            "employee": employee,
+            "lb": lb,
+            "departments": departments,
+            "emp_dept_id": emp_dept_id,  # <- use this in the template
+        },
         request=request,
     )
     return HttpResponse(html)

@@ -1,15 +1,4 @@
-# # promotion/urls.py
-# from django.urls import path
-# from . import views
 
-# app_name = "promotion"
-
-# urlpatterns = [
-#     path("", views.PromotionCreateView.as_view(), name="create"),
-#     path("employee-lookup/", views.employee_lookup, name="employee_lookup"),
-#     path("designation-details/", views.designation_details, name="designation_details"),
-#     path("apply/<int:pk>/", views.apply_promotion, name="apply"),
-# ]
 from django.urls import path
 from . import views
 

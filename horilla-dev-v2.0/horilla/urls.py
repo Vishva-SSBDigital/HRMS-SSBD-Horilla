@@ -49,6 +49,7 @@ urlpatterns = [
     path("deputation/", include("deputation.urls")),  # namespace = 'deputation'
     path("deputation/employee/", dep_views.deputation_list, name="deputation_employee_view"),
     path("promotion/", include("promotion.urls", namespace="promotion")),
+    
 
 ]
 

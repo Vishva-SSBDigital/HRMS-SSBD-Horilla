@@ -28,7 +28,7 @@
     <input class="form-control" name="proposed_basic_salary" value="{{ proposed_basic|default:'0.00' }}" readonly>
   </div>
 </div> {% endcomment %}
-
+{% comment %} 
 {% load i18n %}
 
 <div class="oh-input-group">
@@ -49,4 +49,31 @@
 <div class="oh-input-group">
   <label class="oh-label">{% trans "Proposed Basic Salary (by designation)" %}</label>
   <input class="oh-input" name="proposed_basic_salary" value="{{ proposed_basic|default:'0.00' }}" readonly>
+</div> {% endcomment %}
+
+
+{% load i18n %}
+
+<div class="oh-input-group">
+  <label class="oh-label">{% trans "Adjusted Leave (CL)" %}</label>
+  <input class="oh-input" id="v_adjusted_cl" name="v_adjusted_cl" value="{{ adjusted.cl|default:0 }}" readonly>
+  <input type="hidden" name="adjusted_cl" id="id_adjusted_cl" value="{{ adjusted.cl|default:0 }}">
+</div>
+
+<div class="oh-input-group">
+  <label class="oh-label">{% trans "Adjusted Leave (PL)" %}</label>
+  <input class="oh-input" id="v_adjusted_pl" name="v_adjusted_pl" value="{{ adjusted.pl|default:0 }}" readonly>
+  <input type="hidden" name="adjusted_pl" id="id_adjusted_pl" value="{{ adjusted.pl|default:0 }}">
+</div>
+
+<div class="oh-input-group">
+  <label class="oh-label">{% trans "Adjusted Leave (SL)" %}</label>
+  <input class="oh-input" id="v_adjusted_sl" name="v_adjusted_sl" value="{{ adjusted.sl|default:0 }}" readonly>
+  <input type="hidden" name="adjusted_sl" id="id_adjusted_sl" value="{{ adjusted.sl|default:0 }}">
+</div>
+
+<div class="oh-input-group" style="grid-column:1/-1;">
+  <label class="oh-label">{% trans "Proposed Basic Salary (by designation)" %}</label>
+  <input class="oh-input" id="v_proposed_basic" value="{{ proposed_basic|default:'0.00' }}" readonly>
+  {{ form.proposed_basic_salary }}
 </div>

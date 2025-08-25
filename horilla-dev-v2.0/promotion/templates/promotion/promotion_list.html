@@ -1,5 +1,6 @@
 {% extends 'index.html' %}
-{% load static i18n %}
+{% load i18n %}
+{% load static %}
 
 {% block content %}
 <main :class="sidebarOpen ? 'oh-main__sidebar-visible' : ''" id="promotion-page">
@@ -108,6 +109,7 @@
                        title="{% trans 'Amend' %}">
                       <ion-icon name="create-outline" aria-hidden="true"></ion-icon>
                     </a>
+
                     <form
                       hx-post="{% url 'promotion:delete' p.id %}"
                       hx-confirm="{% trans 'Delete this promotion?' %}"
@@ -160,25 +162,39 @@
 </div>
 
 <style>
-  #promotion-page .dp-table-wrap{ width:100%; overflow:auto; border:1px solid #eef0f4; border-radius:12px; background:#fff; }
-  #promotion-page .dp-table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; font-size:14px; }
-  #promotion-page .dp-table thead th{ position:sticky; top:0; z-index:5; background:#fff; font-weight:600; padding:10px 12px; border-bottom:1px solid #eef0f4; text-align:left!important; }
-  #promotion-page .dp-table tbody td{ padding:10px 12px; border-bottom:1px solid #f2f4f8; vertical-align:middle; height:44px; background:#fff; }
-  .sticky-col-1{ position:sticky; left:0; background:#fff; z-index:6; }
-  .sticky-col-2{ position:sticky; left:46px; background:#fff; z-index:6; }
-  .center{ text-align:center; }
-  .ellipsis{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .nowrap{ white-space:nowrap; }
-  .dp-search{ width:280px; }
-  @media (max-width: 992px){ .dp-search{ width:220px; } }
+  #promotion-page .dp-table-wrap {
+    width:100%; overflow:auto; border:1px solid #eef0f4; border-radius:12px; background:#fff;
+  }
+  #promotion-page .dp-table {
+    width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; font-size:14px;
+  }
+  #promotion-page .dp-table thead th {
+    position:sticky; top:0; z-index:5; background:#fff; font-weight:600; padding:10px 12px;
+    border-bottom:1px solid #eef0f4; text-align:left !important;
+  }
+  #promotion-page .dp-table tbody td {
+    padding:10px 12px; border-bottom:1px solid #f2f4f8; vertical-align:middle; height:44px; background:#fff;
+  }
+  .sticky-col-1 { position:sticky; left:0;   background:#fff; z-index:6; }
+  .sticky-col-2 { position:sticky; left:46px; background:#fff; z-index:6; }
+  .center { text-align:center; }
+  .ellipsis { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nowrap { white-space:nowrap; }
+  .btn-icons { display:flex; gap:.4rem; justify-content:center; }
+  .oh-btn--icon { width:34px; height:34px; padding:0; display:inline-flex; align-items:center; justify-content:center; }
+  .empty { text-align:center; padding:48px 16px; }
+  .empty img { width:160px; display:block; margin:0 auto 8px; opacity:.9; }
 </style>
 
 <script>
-  const chkAll = document.getElementById('chkAll');
-  const selectedCountEl = document.getElementById('selectedCount');
-  const rows = () => document.querySelectorAll('.rowChk');
-  function refreshCount(){ selectedCountEl.textContent = [...rows()].filter(cb => cb.checked).length; }
-  chkAll?.addEventListener('change', () => { rows().forEach(cb => cb.checked = chkAll.checked); refreshCount(); });
-  document.addEventListener('change', e => { if (e.target.classList?.contains('rowChk')) refreshCount(); });
+  // selection count
+  (function(){
+    const chkAll = document.getElementById('chkAll');
+    const selectedCountEl = document.getElementById('selectedCount');
+    const rows = () => document.querySelectorAll('.rowChk');
+    function refreshCount(){ selectedCountEl.textContent = [...rows()].filter(cb => cb.checked).length; }
+    chkAll?.addEventListener('change', () => { rows().forEach(cb => cb.checked = chkAll.checked); refreshCount(); });
+    document.addEventListener('change', e => { if (e.target.classList?.contains('rowChk')) refreshCount(); });
+  })();
 </script>
 {% endblock content %}
