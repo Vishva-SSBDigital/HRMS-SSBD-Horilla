@@ -16,4 +16,6 @@ urlpatterns = [
     # HTMX helpers (we already built these earlier)
     path("employee-lookup/", views.employee_lookup, name="employee_lookup"),
     path("designation-details/", views.designation_details, name="designation_details"),
+    path("positions-for-department/", views.positions_for_department, name="positions_for_department"),
+   
 ]

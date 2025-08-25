@@ -89,7 +89,7 @@
 </select> {% endcomment %}
 
 
-{% load i18n %}
+{% comment %} {% load i18n %}
 
 {# NAME (readonly) #}
 <div class="oh-input-group" style="grid-column:1/-1;">
@@ -136,4 +136,127 @@
       <option value="{{ d.id }}" {% if d.id == emp_dept_id %}selected{% endif %}>{{ d.department }}</option>
     {% endfor %}
   </select>
+{% endif %} {% endcomment %}
+
+
+{# templates/promotion/_employee_autofill_fields.html #}
+{% comment %} {% load i18n %}
+{% with ewi=employee.employee_work_info %}
+  <div class="oh-input-group" style="grid-column:1/-1;">
+    <label class="oh-label">{% trans "Name" %}</label>
+    <input class="oh-input" value="{{ employee.get_full_name }}" readonly>
+  </div>
+
+  <div class="oh-input-group">
+    <label class="oh-label">{% trans "Current Employee Status" %}</label>
+    <input class="oh-input" value="{{ ewi.employee_type_id.name|default:'' }}" readonly>
+    <input type="hidden" name="current_status" value="{{ ewi.employee_type_id.name|default:'' }}">
+  </div>
+
+  <div class="oh-input-group">
+    <label class="oh-label">{% trans "Current Grade/Designation" %}</label>
+    <input class="oh-input" value="{{ ewi.job_position_id.name|default:'' }}" readonly>
+    <input type="hidden" name="current_designation" value="{{ ewi.job_position_id.id|default:'' }}">
+  </div>
+
+  <div class="oh-input-group">
+    <label class="oh-label">{% trans "Current Leave (CL)" %}</label>
+    <input class="oh-input" value="{{ lb.cl_balance|default:0 }}" readonly>
+    <input type="hidden" name="current_cl" value="{{ lb.cl_balance|default:0 }}">
+  </div>
+  <div class="oh-input-group">
+    <label class="oh-label">{% trans "Current Leave (PL)" %}</label>
+    <input class="oh-input" value="{{ lb.pl_balance|default:0 }}" readonly>
+    <input type="hidden" name="current_pl" value="{{ lb.pl_balance|default:0 }}">
+  </div>
+  <div class="oh-input-group">
+    <label class="oh-label">{% trans "Current Leave (SL)" %}</label>
+    <input class="oh-input" value="{{ lb.sl_balance|default:0 }}" readonly>
+    <input type="hidden" name="current_sl" value="{{ lb.sl_balance|default:0 }}">
+  </div>
+
+  {# OOB: set Department select to the employee's dept #}
+  {% if departments %}
+    <select id="id_department" name="department" class="oh-input oh-select" hx-swap-oob="true" style="display:none">
+      <option value="">---------</option>
+      {% for d in departments %}
+        <option value="{{ d.id }}" {% if d.id == emp_dept_id %}selected{% endif %}>{{ d.department }}</option>
+      {% endfor %}
+    </select>
+  {% endif %}
+{% endwith %} {% endcomment %}
+
+
+
+{% comment %} {% load i18n %}
+{% if employee %}
+  {% with ewi=employee.employee_work_info %}
+    <!-- Display fields -->
+    <div class="oh-input-group">
+      <label class="oh-label">{% trans "Current Status" %}</label>
+      <input class="oh-input" value="{{ ewi.employee_type_id.name|default:'' }}" readonly>
+    </div>
+
+    <div class="oh-input-group">
+      <label class="oh-label">{% trans "Current Designation" %}</label>
+      <input class="oh-input" value="{{ ewi.job_position_id.name|default:'' }}" readonly>
+    </div>
+
+    <!-- Hidden ModelForm fields: replace values Out-Of-Band -->
+    <input type="hidden" id="id_current_status" name="current_status"
+           value="{{ ewi.employee_type_id.name|default:'' }}" hx-swap-oob="true">
+    <input type="hidden" id="id_current_designation" name="current_designation"
+           value="{{ ewi.job_position_id.id|default:'' }}" hx-swap-oob="true">
+    <input type="hidden" id="id_current_cl" name="current_cl" value="{{ lb.cl_balance|default:0 }}" hx-swap-oob="true">
+    <input type="hidden" id="id_current_pl" name="current_pl" value="{{ lb.pl_balance|default:0 }}" hx-swap-oob="true">
+    <input type="hidden" id="id_current_sl" name="current_sl" value="{{ lb.sl_balance|default:0 }}" hx-swap-oob="true">
+
+    <!-- Also update the read-only little counters in the “Leave snapshot” card -->
+    <input type="text" value="{{ lb.cl_balance|default:0 }}" id="v_current_cl" hx-swap-oob="true" class="oh-input" readonly>
+    <input type="text" value="{{ lb.pl_balance|default:0 }}" id="v_current_pl" hx-swap-oob="true" class="oh-input" readonly>
+    <input type="text" value="{{ lb.sl_balance|default:0 }}" id="v_current_sl" hx-swap-oob="true" class="oh-input" readonly>
+
+    <!-- OOB: preselect Department -->
+    {% if departments %}
+      <select id="id_department" name="department" class="oh-input oh-select" hx-swap-oob="true" style="display:none">
+        <option value="">---------</option>
+        {% for d in departments %}
+          <option value="{{ d.id }}" {% if d.id == emp_dept_id %}selected{% endif %}>{{ d.department }}</option>
+        {% endfor %}
+      </select>
+    {% endif %}
+  {% endwith %}
+{% else %}
+  {# initial/empty #}
+{% endif %} {% endcomment %}
+
+
+{% load i18n %}
+{% if employee %}
+  <!-- Fill visible status/designation -->
+  <input id="v_current_status" value="{{ status_label }}" class="oh-input" readonly hx-swap-oob="true">
+  <input id="v_current_designation" value="{{ desig_label }}" class="oh-input" readonly hx-swap-oob="true">
+
+  <!-- Hidden form fields that will be submitted -->
+  <input type="hidden" id="id_current_status" name="current_status" value="{{ status_code }}" hx-swap-oob="true">
+  <input type="hidden" id="id_current_designation" name="current_designation" value="{{ desig_pk }}" hx-swap-oob="true">
+
+  <!-- Leave balances (visible counters + hidden snapshots) -->
+  <input type="text" id="v_current_cl" class="oh-input" value="{{ lb.cl_balance|default:0 }}" readonly hx-swap-oob="true">
+  <input type="text" id="v_current_pl" class="oh-input" value="{{ lb.pl_balance|default:0 }}" readonly hx-swap-oob="true">
+  <input type="text" id="v_current_sl" class="oh-input" value="{{ lb.sl_balance|default:0 }}" readonly hx-swap-oob="true">
+
+  <input type="hidden" id="id_current_cl" name="current_cl" value="{{ lb.cl_balance|default:0 }}" hx-swap-oob="true">
+  <input type="hidden" id="id_current_pl" name="current_pl" value="{{ lb.pl_balance|default:0 }}" hx-swap-oob="true">
+  <input type="hidden" id="id_current_sl" name="current_sl" value="{{ lb.sl_balance|default:0 }}" hx-swap-oob="true">
+
+  <!-- Optional: Department preselect -->
+  {% if departments %}
+    <select id="id_department" name="department" class="oh-input oh-select" hx-swap-oob="true" style="display:none">
+      <option value="">---------</option>
+      {% for d in departments %}
+        <option value="{{ d.id }}" {% if d.id == emp_dept_id %}selected{% endif %}>{{ d.department }}</option>
+      {% endfor %}
+    </select>
+  {% endif %}
 {% endif %}

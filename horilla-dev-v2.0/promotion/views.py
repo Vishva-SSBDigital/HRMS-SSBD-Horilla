@@ -157,40 +157,405 @@
 #     return redirect("promotion:create")
 
 
-# # Create your views here.
+# # # Create your views here.
+# from decimal import Decimal
+
+# from django.contrib import messages
+# from django.contrib.auth.decorators import login_required
+# from django.contrib.auth.mixins import LoginRequiredMixin
+# from django.utils.html import format_html, format_html_join
+# from django.db import transaction
+# from django.http import (
+#     Http404,
+#     HttpResponse,
+#     HttpResponseBadRequest,
+#     JsonResponse,
+# )
+# from django.shortcuts import get_object_or_404, render
+# from django.template.loader import render_to_string
+# from django.views.decorators.http import require_http_methods
+# from django.views.generic import ListView
+# from base.models import Department
+# from .models import Employee, LeaveBalance 
+# from django.db.models import Q
+# from django.http import HttpResponse
+# from employee.models import Employee 
+
+# from .forms import PromotionForm
+# from .models import (
+#     Promotion,
+#     Employee,
+#     Designation,
+#     LeaveBalance,
+#     LeaveEntitlement,
+#     SalaryBand,
+# )
+
+# # -------------------------------------------------------------------
+# # LIST PAGE (Horilla style like your deputation list)
+# # -------------------------------------------------------------------
+
+# class PromotionListView(LoginRequiredMixin, ListView):
+#     model = Promotion
+#     template_name = "promotion/promotion_list.html"
+#     context_object_name = "page_obj"
+#     paginate_by = 20
+
+#     def get_queryset(self):
+#         qs = (
+#             Promotion.objects.select_related(
+#                 "employee", "current_designation", "proposed_designation"
+#             )
+#             .order_by("-created_at")
+#         )
+
+#         q = self.request.GET.get("q") or ""
+#         status = self.request.GET.get("status") or "all"
+
+#         if q:
+#             # Adjust this filter to match your Employee fields (name, emp_code, etc.)
+#             qs = qs.filter(employee__name__icontains=q)
+
+#         if status == "applied":
+#             qs = qs.filter(applied=True)
+#         elif status == "pending":
+#             qs = qs.filter(applied=False)
+
+#         return qs
+
+#     def get_context_data(self, **kwargs):
+#         ctx = super().get_context_data(**kwargs)
+#         ctx["q"] = self.request.GET.get("q") or ""
+#         ctx["status"] = self.request.GET.get("status") or "all"
+#         ctx["per_page"] = self.paginate_by
+#         return ctx
+
+
+# # -------------------------------------------------------------------
+# # MODAL: CREATE
+# # -------------------------------------------------------------------
+
+# @login_required
+# @require_http_methods(["GET", "POST"])
+# def promotion_create(request):
+#     if request.method == "GET":
+#         form = PromotionForm()
+#         return render(
+#             request,
+#             "promotion/promotion_form.html",
+#             {"form": form, "is_update": False},
+#         )
+
+#     # POST
+#     form = PromotionForm(request.POST)
+#     if form.is_valid():
+#         with transaction.atomic():
+#             promo = form.save(commit=False)
+#             promo.created_by = request.user
+
+#             # snapshot current leave at creation time
+#             lb = LeaveBalance.objects.filter(employee=promo.employee).first()
+#             promo.current_cl = lb.cl_balance if lb else 0
+#             promo.current_pl = lb.pl_balance if lb else 0
+#             promo.current_sl = lb.sl_balance if lb else 0
+
+#             promo.save()
+
+#         messages.success(request, "Promotion created.")
+#         resp = render(
+#             request,
+#             "promotion/promotion_form.html",
+#             {"form": PromotionForm(), "is_update": False, "created": True},
+#         )
+#         resp["HX-Trigger"] = "promotion:created"
+#         return resp
+
+#     return render(
+#         request,
+#         "promotion/promotion_form.html",
+#         {"form": form, "is_update": False},
+#     )
+
+
+# # -------------------------------------------------------------------
+# # MODAL: UPDATE
+# # -------------------------------------------------------------------
+
+# @login_required
+# @require_http_methods(["GET", "POST"])
+# def promotion_update(request, pk: int):
+#     promo = get_object_or_404(Promotion, pk=pk)
+
+#     if request.method == "GET":
+#         form = PromotionForm(instance=promo)
+#         return render(
+#             request,
+#             "promotion/promotion_form.html",
+#             {"form": form, "is_update": True, "instance": promo},
+#         )
+
+#     form = PromotionForm(request.POST, instance=promo)
+#     if form.is_valid():
+#         form.save()
+#         messages.success(request, "Promotion updated.")
+#         resp = render(
+#             request,
+#             "promotion/promotion_form.html",
+#             {"form": form, "is_update": True, "instance": promo, "updated": True},
+#         )
+#         resp["HX-Trigger"] = "promotion:updated"
+#         return resp
+
+#     return render(
+#         request,
+#         "promotion/promotion_form.html",
+#         {"form": form, "is_update": True, "instance": promo},
+#     )
+
+
+# # -------------------------------------------------------------------
+# # INLINE DELETE (HTMX removes the row)
+# # -------------------------------------------------------------------
+
+# @login_required
+# @require_http_methods(["POST"])
+# def promotion_delete(request, pk: int):
+#     promo = get_object_or_404(Promotion, pk=pk)
+#     promo.delete()
+#     return HttpResponse("")
+
+
+# # -------------------------------------------------------------------
+# # HELPERS used by HTMX endpoints
+# # -------------------------------------------------------------------
+
+# def _compute_adjusted_leave(current_lb, new_ent):
+#     """
+#     Simple policy:
+#       adjusted = min(current balance, new entitlement)
+#     Customize this if your policy differs.
+#     """
+#     if not current_lb or not new_ent:
+#         return {"cl": 0, "pl": 0, "sl": 0}
+#     return {
+#         "cl": min(current_lb.cl_balance, new_ent.cl_per_year),
+#         "pl": min(current_lb.pl_balance, new_ent.pl_per_year),
+#         "sl": min(current_lb.sl_balance, new_ent.sl_per_year),
+#     }
+
+
+# def _default_basic_for(designation):
+#     if not designation:
+#         return Decimal("0.00")
+#     band = getattr(designation, "salary_band", None)
+#     return band.default_basic if band else Decimal("0.00")
+
+
+# # -------------------------------------------------------------------
+# # HTMX: EMPLOYEE LOOKUP
+# # Accepts either employee=<pk> (select) or employee_id=<code> (textbox)
+# # Returns JSON with rendered partial for autofill block
+# # -------------------------------------------------------------------
+
+# # @login_required
+# # def employee_lookup(request):
+# #     emp_pk = request.GET.get("employee")
+# #     emp_code = (request.GET.get("employee_id") or "").strip()
+
+# #     employee = None
+# #     if emp_pk:
+# #         try:
+# #             employee = Employee.objects.select_related("designation").get(pk=emp_pk)
+# #         except Employee.DoesNotExist:
+# #             employee = None
+# #     elif emp_code:
+# #         try:
+# #             employee = Employee.objects.select_related("designation").get(
+# #                 employee_id=emp_code
+# #             )
+# #         except Employee.DoesNotExist:
+# #             employee = None
+
+# #     if not employee:
+# #         return JsonResponse(
+# #             {"ok": False, "html": "<div class='oh-input__error'>Employee not found</div>"}
+# #         )
+
+# #     lb = LeaveBalance.objects.filter(employee=employee).first()
+
+# #     html = render_to_string(
+# #         "promotion/_employee_autofill_fields.html",
+# #         {"employee": employee, "lb": lb},
+# #         request=request,
+# #     )
+# #     return JsonResponse({"ok": True, "html": html})
+
+
+# # -------------------------------------------------------------------
+# # HTMX: DESIGNATION DETAILS
+# # Needs proposed_designation=<id> and employee=<pk>
+# # Returns JSON with rendered partial for adjusted leaves + proposed basic
+# # -------------------------------------------------------------------
+
+# @login_required
+# def designation_details(request):
+#     try:
+#         desig_id = int(request.GET.get("proposed_designation"))
+#         emp_pk = int(request.GET.get("employee"))
+#     except (TypeError, ValueError):
+#         return HttpResponseBadRequest("Invalid parameters")
+
+#     employee = get_object_or_404(Employee, pk=emp_pk)
+#     new_desig = get_object_or_404(Designation, pk=desig_id)
+
+#     lb = LeaveBalance.objects.filter(employee=employee).first()
+#     ent = LeaveEntitlement.objects.filter(designation=new_desig).first()
+
+#     adjusted = _compute_adjusted_leave(lb, ent)
+#     proposed_basic = _default_basic_for(new_desig)
+
+#     html = render_to_string(
+#         "promotion/_proposal_fields.html",
+#         {"adjusted": adjusted, "proposed_basic": proposed_basic},
+#         request=request,
+#     )
+#     return JsonResponse({"ok": True, "html": html})
+
+# # @login_required
+# # def employee_lookup(request):
+# #     emp_pk = request.GET.get("employee")
+# #     emp_code = (request.GET.get("employee_id") or "").strip()
+
+# #     employee = None
+# #     if emp_pk:
+# #         try:
+# #             employee = Employee.objects.select_related("designation", "department").get(pk=emp_pk)
+# #         except Employee.DoesNotExist:
+# #             employee = None
+# #     elif emp_code:
+# #         try:
+# #             employee = Employee.objects.select_related("designation", "department").get(employee_id=emp_code)
+# #         except Employee.DoesNotExist:
+# #             employee = None
+
+# #     if not employee:
+# #         return HttpResponse("<div class='oh-input__error'>Employee not found</div>")
+
+# #     lb = LeaveBalance.objects.filter(employee=employee).first()
+# #     departments = Department.objects.all().order_by("department")  # or "name"
+
+# #     html = render_to_string(
+# #         "promotion/_employee_autofill_fields.html",
+# #         {"employee": employee, "lb": lb, "departments": departments},
+# #         request=request,
+# #     )
+# #     return HttpResponse(html)
+
+# # @login_required
+# # def designation_details(request):
+# #     try:
+# #         desig_id = int(request.GET.get("proposed_designation"))
+# #         emp_pk = int(request.GET.get("employee"))
+# #     except (TypeError, ValueError):
+# #         return HttpResponseBadRequest("Invalid parameters")
+
+# #     employee = get_object_or_404(Employee, pk=emp_pk)
+# #     new_desig = get_object_or_404(Designation, pk=desig_id)
+# #     lb = LeaveBalance.objects.filter(employee=employee).first()
+# #     ent = LeaveEntitlement.objects.filter(designation=new_desig).first()
+
+# #     adjusted = _compute_adjusted_leave(lb, ent)
+# #     proposed_basic = _default_basic_for(new_desig)
+
+# #     html = render_to_string(
+# #         "promotion/_proposal_fields.html",
+# #         {"adjusted": adjusted, "proposed_basic": proposed_basic},
+# #         request=request,
+# #     )
+# #     return HttpResponse(html)
+
+# # REMOVE the earlier JsonResponse version of employee_lookup entirely.
+# @login_required
+# def employee_lookup(request):
+#     try:
+#         emp_pk = (request.GET.get("employee") or "").strip()   # from the dropdown
+
+#         if not emp_pk:
+#             return HttpResponse("<div class='oh-input__error'>Employee not provided</div>")
+
+#         qs = Employee.objects.select_related(
+#             "employee_work_info",
+#             "employee_work_info__employee_type_id",
+#             "employee_work_info__job_position_id",
+#             "employee_work_info__department_id",
+#         )
+#         try:
+#             emp = qs.get(pk=emp_pk)
+#         except Employee.DoesNotExist:
+#             return HttpResponse("<div class='oh-input__error'>Employee not found</div>")
+
+#         departments = Department.objects.all().order_by("department")
+#         ewi = getattr(emp, "employee_work_info", None)
+#         emp_dept_id = getattr(getattr(ewi, "department_id", None), "pk", None)
+
+#         lb = None  # plug your LeaveBalance here if available
+
+#         html = render_to_string(
+#             "promotion/_employee_autofill_fields.html",
+#             {"employee": emp, "lb": lb, "departments": departments, "emp_dept_id": emp_dept_id},
+#             request=request,
+#         )
+#         return HttpResponse(html)
+
+#     except Exception:
+#         tb = traceback.format_exc()
+#         return HttpResponse(
+#             f"<pre style='white-space:pre-wrap; color:#b00; font-size:12px;'>Lookup error:\n{tb}</pre>",
+#             status=500,
+#         )
+
+
+
+
+
 from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.utils.html import format_html, format_html_join
 from django.db import transaction
-from django.http import (
-    Http404,
-    HttpResponse,
-    HttpResponseBadRequest,
-    JsonResponse,
-)
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_http_methods
 from django.views.generic import ListView
-from base.models import Department
-from .models import Employee, LeaveBalance 
 
+from base.models import Department
+from employee.models import Employee  # <- real HR Employee
 from .forms import PromotionForm
 from .models import (
     Promotion,
-    Employee,
     Designation,
     LeaveBalance,
     LeaveEntitlement,
     SalaryBand,
 )
 
-# -------------------------------------------------------------------
-# LIST PAGE (Horilla style like your deputation list)
-# -------------------------------------------------------------------
+
+def _pos_label(p):
+    return getattr(p, "job_position", None) or getattr(p, "name", f"Position #{p.pk}")
+def _label(x):
+    if x is None:
+        return ""
+    for a in ("name", "title", "display_name"):
+        v = getattr(x, a, None)
+        if v:
+            return str(v)
+    s = str(x)
+    return "" if s == "None" else s
+
+def _pk(x):
+    return getattr(x, "pk", "") if x else ""
 
 class PromotionListView(LoginRequiredMixin, ListView):
     model = Promotion
@@ -199,25 +564,20 @@ class PromotionListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        qs = (
-            Promotion.objects.select_related(
-                "employee", "current_designation", "proposed_designation"
-            )
-            .order_by("-created_at")
-        )
+        qs = Promotion.objects.select_related(
+            "employee", "current_designation", "proposed_designation"
+        ).order_by("-created_at")
 
         q = self.request.GET.get("q") or ""
         status = self.request.GET.get("status") or "all"
 
         if q:
-            # Adjust this filter to match your Employee fields (name, emp_code, etc.)
             qs = qs.filter(employee__name__icontains=q)
 
         if status == "applied":
             qs = qs.filter(applied=True)
         elif status == "pending":
             qs = qs.filter(applied=False)
-
         return qs
 
     def get_context_data(self, **kwargs):
@@ -228,55 +588,62 @@ class PromotionListView(LoginRequiredMixin, ListView):
         return ctx
 
 
-# -------------------------------------------------------------------
-# MODAL: CREATE
-# -------------------------------------------------------------------
+# --- helpers ---------------------------------------------------------
+
+def _compute_adjusted_leave(current_lb, new_ent):
+    if not current_lb or not new_ent:
+        return {"cl": 0, "pl": 0, "sl": 0}
+    return {
+        "cl": min(current_lb.cl_balance, new_ent.cl_per_year),
+        "pl": min(current_lb.pl_balance, new_ent.pl_per_year),
+        "sl": min(current_lb.sl_balance, new_ent.sl_per_year),
+    }
+
+def _default_basic_for(designation):
+    if not designation:
+        return Decimal("0.00")
+    band = getattr(designation, "salary_band", None)
+    return band.default_basic if band else Decimal("0.00")
+
+
+# --- create/update/delete -------------------------------------------
 
 @login_required
 @require_http_methods(["GET", "POST"])
 def promotion_create(request):
     if request.method == "GET":
         form = PromotionForm()
-        return render(
-            request,
-            "promotion/promotion_form.html",
-            {"form": form, "is_update": False},
-        )
+        return render(request, "promotion/promotion_form.html", {"form": form, "is_update": False})
 
-    # POST
     form = PromotionForm(request.POST)
-    if form.is_valid():
-        with transaction.atomic():
-            promo = form.save(commit=False)
-            promo.created_by = request.user
+    if not form.is_valid():
+        return render(request, "promotion/promotion_form.html", {"form": form, "is_update": False})
 
-            # snapshot current leave at creation time
-            lb = LeaveBalance.objects.filter(employee=promo.employee).first()
-            promo.current_cl = lb.cl_balance if lb else 0
-            promo.current_pl = lb.pl_balance if lb else 0
-            promo.current_sl = lb.sl_balance if lb else 0
+    with transaction.atomic():
+        promo = form.save(commit=False)
+        promo.created_by = request.user
 
-            promo.save()
+        # Snapshot from authoritative sources (avoid client tampering)
+        emp = promo.employee
+        # status code should be 'REGULAR'/'CONTRACT' from Employee.status
+        promo.current_status = getattr(emp, "status", "") or (request.POST.get("current_status") or "")
 
-        messages.success(request, "Promotion created.")
-        resp = render(
-            request,
-            "promotion/promotion_form.html",
-            {"form": PromotionForm(), "is_update": False, "created": True},
-        )
-        resp["HX-Trigger"] = "promotion:created"
-        return resp
+        # current designation from employee FK
+        promo.current_designation = getattr(emp, "designation", None)
 
-    return render(
-        request,
-        "promotion/promotion_form.html",
-        {"form": form, "is_update": False},
-    )
+        # current leave snapshot
+        lb = LeaveBalance.objects.filter(employee=emp).first()
+        promo.current_cl = lb.cl_balance if lb else 0
+        promo.current_pl = lb.pl_balance if lb else 0
+        promo.current_sl = lb.sl_balance if lb else 0
 
+        promo.save()
 
-# -------------------------------------------------------------------
-# MODAL: UPDATE
-# -------------------------------------------------------------------
+    messages.success(request, "Promotion created.")
+    resp = render(request, "promotion/promotion_form.html", {"form": PromotionForm(), "is_update": False, "created": True})
+    resp["HX-Trigger"] = "promotion:created"
+    return resp
+
 
 @login_required
 @require_http_methods(["GET", "POST"])
@@ -285,34 +652,28 @@ def promotion_update(request, pk: int):
 
     if request.method == "GET":
         form = PromotionForm(instance=promo)
-        return render(
-            request,
-            "promotion/promotion_form.html",
-            {"form": form, "is_update": True, "instance": promo},
-        )
+        return render(request, "promotion/promotion_form.html", {"form": form, "is_update": True, "instance": promo})
 
     form = PromotionForm(request.POST, instance=promo)
-    if form.is_valid():
-        form.save()
-        messages.success(request, "Promotion updated.")
-        resp = render(
-            request,
-            "promotion/promotion_form.html",
-            {"form": form, "is_update": True, "instance": promo, "updated": True},
-        )
-        resp["HX-Trigger"] = "promotion:updated"
-        return resp
+    if not form.is_valid():
+        return render(request, "promotion/promotion_form.html", {"form": form, "is_update": True, "instance": promo})
 
-    return render(
-        request,
-        "promotion/promotion_form.html",
-        {"form": form, "is_update": True, "instance": promo},
-    )
+    with transaction.atomic():
+        promo = form.save(commit=False)
 
+        # Keep current_* in sync with employee record on update, too
+        emp = promo.employee
+        promo.current_status = getattr(emp, "status", promo.current_status)
+        promo.current_designation = getattr(emp, "designation", promo.current_designation)
 
-# -------------------------------------------------------------------
-# INLINE DELETE (HTMX removes the row)
-# -------------------------------------------------------------------
+        # (You can decide whether to re-snapshot leaves on update. Keeping as-is.)
+        promo.save()
+
+    messages.success(request, "Promotion updated.")
+    resp = render(request, "promotion/promotion_form.html", {"form": form, "is_update": True, "instance": promo, "updated": True})
+    resp["HX-Trigger"] = "promotion:updated"
+    return resp
+
 
 @login_required
 @require_http_methods(["POST"])
@@ -322,78 +683,67 @@ def promotion_delete(request, pk: int):
     return HttpResponse("")
 
 
-# -------------------------------------------------------------------
-# HELPERS used by HTMX endpoints
-# -------------------------------------------------------------------
+# --- HTMX endpoints --------------------------------------------------
 
-def _compute_adjusted_leave(current_lb, new_ent):
-    """
-    Simple policy:
-      adjusted = min(current balance, new entitlement)
-    Customize this if your policy differs.
-    """
-    if not current_lb or not new_ent:
-        return {"cl": 0, "pl": 0, "sl": 0}
-    return {
-        "cl": min(current_lb.cl_balance, new_ent.cl_per_year),
-        "pl": min(current_lb.pl_balance, new_ent.pl_per_year),
-        "sl": min(current_lb.sl_balance, new_ent.sl_per_year),
+@login_required
+def employee_lookup(request):
+    emp_pk = (request.GET.get("employee") or "").strip()
+    if not emp_pk:
+        return HttpResponseBadRequest("employee missing")
+
+    # ✅ ONLY select relations that actually exist on your Employee model
+    # (designation DOES NOT exist here per the error)
+    try:
+        emp = Employee.objects.select_related("employee_work_info").get(pk=emp_pk)
+    except Employee.DoesNotExist:
+        return HttpResponse("<div class='oh-input__error'>Employee not found</div>", status=404)
+
+    ewi = getattr(emp, "employee_work_info", None)
+
+    # ---- CURRENT STATUS (label + code) ----
+    status_code = getattr(emp, "status", "")  # e.g., REGULAR / CONTRACT
+    status_label = ""
+    # If your Employee has choices, get_status_display() works; otherwise fall back to WorkInfo
+    if hasattr(emp, "get_status_display"):
+        try:
+            status_label = emp.get_status_display() or ""
+        except Exception:
+            status_label = ""
+    if not status_label and ewi is not None:
+        et = getattr(ewi, "employee_type", None) or getattr(ewi, "employee_type_id", None)
+        status_label = _label(et)
+        if not status_code:
+            status_code = getattr(et, "code", "") or status_label
+
+    # ---- CURRENT DESIGNATION (label + pk) ----
+    # Your Employee doesn't have emp.designation; take it from WorkInfo instead.
+    desig_obj = None
+    if ewi is not None:
+        desig_obj = getattr(ewi, "job_position", None) or getattr(ewi, "job_position_id", None)
+    desig_label = _label(desig_obj)
+    desig_pk = _pk(desig_obj)  # NOTE: this is the JobPosition PK, not your Promotion.Designation PK
+
+    # ---- Leave balances ----
+    lb = LeaveBalance.objects.filter(employee=emp).first()
+
+    # ---- Department preselect (optional) ----
+    departments = Department.objects.all().order_by("department")
+    dep_obj = getattr(ewi, "department", None) or getattr(ewi, "department_id", None)
+    emp_dept_id = _pk(dep_obj)
+
+    ctx = {
+        "employee": emp,
+        "lb": lb,
+        "departments": departments,
+        "emp_dept_id": emp_dept_id,
+        # flattened values for the partial
+        "status_label": status_label or "",
+        "status_code": status_code or "",
+        "desig_label": desig_label or "",
+        "desig_pk": desig_pk or "",
     }
-
-
-def _default_basic_for(designation):
-    if not designation:
-        return Decimal("0.00")
-    band = getattr(designation, "salary_band", None)
-    return band.default_basic if band else Decimal("0.00")
-
-
-# -------------------------------------------------------------------
-# HTMX: EMPLOYEE LOOKUP
-# Accepts either employee=<pk> (select) or employee_id=<code> (textbox)
-# Returns JSON with rendered partial for autofill block
-# -------------------------------------------------------------------
-
-# @login_required
-# def employee_lookup(request):
-#     emp_pk = request.GET.get("employee")
-#     emp_code = (request.GET.get("employee_id") or "").strip()
-
-#     employee = None
-#     if emp_pk:
-#         try:
-#             employee = Employee.objects.select_related("designation").get(pk=emp_pk)
-#         except Employee.DoesNotExist:
-#             employee = None
-#     elif emp_code:
-#         try:
-#             employee = Employee.objects.select_related("designation").get(
-#                 employee_id=emp_code
-#             )
-#         except Employee.DoesNotExist:
-#             employee = None
-
-#     if not employee:
-#         return JsonResponse(
-#             {"ok": False, "html": "<div class='oh-input__error'>Employee not found</div>"}
-#         )
-
-#     lb = LeaveBalance.objects.filter(employee=employee).first()
-
-#     html = render_to_string(
-#         "promotion/_employee_autofill_fields.html",
-#         {"employee": employee, "lb": lb},
-#         request=request,
-#     )
-#     return JsonResponse({"ok": True, "html": html})
-
-
-# -------------------------------------------------------------------
-# HTMX: DESIGNATION DETAILS
-# Needs proposed_designation=<id> and employee=<pk>
-# Returns JSON with rendered partial for adjusted leaves + proposed basic
-# -------------------------------------------------------------------
-
+    html = render_to_string("promotion/_employee_autofill_fields.html", ctx, request=request)
+    return HttpResponse(html)
 @login_required
 def designation_details(request):
     try:
@@ -416,114 +766,25 @@ def designation_details(request):
         {"adjusted": adjusted, "proposed_basic": proposed_basic},
         request=request,
     )
-    return JsonResponse({"ok": True, "html": html})
+    return HttpResponse(html)
 
-# @login_required
-# def employee_lookup(request):
-#     emp_pk = request.GET.get("employee")
-#     emp_code = (request.GET.get("employee_id") or "").strip()
 
-#     employee = None
-#     if emp_pk:
-#         try:
-#             employee = Employee.objects.select_related("designation", "department").get(pk=emp_pk)
-#         except Employee.DoesNotExist:
-#             employee = None
-#     elif emp_code:
-#         try:
-#             employee = Employee.objects.select_related("designation", "department").get(employee_id=emp_code)
-#         except Employee.DoesNotExist:
-#             employee = None
-
-#     if not employee:
-#         return HttpResponse("<div class='oh-input__error'>Employee not found</div>")
-
-#     lb = LeaveBalance.objects.filter(employee=employee).first()
-#     departments = Department.objects.all().order_by("department")  # or "name"
-
-#     html = render_to_string(
-#         "promotion/_employee_autofill_fields.html",
-#         {"employee": employee, "lb": lb, "departments": departments},
-#         request=request,
-#     )
-#     return HttpResponse(html)
-
-# @login_required
-# def designation_details(request):
-#     try:
-#         desig_id = int(request.GET.get("proposed_designation"))
-#         emp_pk = int(request.GET.get("employee"))
-#     except (TypeError, ValueError):
-#         return HttpResponseBadRequest("Invalid parameters")
-
-#     employee = get_object_or_404(Employee, pk=emp_pk)
-#     new_desig = get_object_or_404(Designation, pk=desig_id)
-#     lb = LeaveBalance.objects.filter(employee=employee).first()
-#     ent = LeaveEntitlement.objects.filter(designation=new_desig).first()
-
-#     adjusted = _compute_adjusted_leave(lb, ent)
-#     proposed_basic = _default_basic_for(new_desig)
-
-#     html = render_to_string(
-#         "promotion/_proposal_fields.html",
-#         {"adjusted": adjusted, "proposed_basic": proposed_basic},
-#         request=request,
-#     )
-#     return HttpResponse(html)
-
-# REMOVE the earlier JsonResponse version of employee_lookup entirely.
 
 @login_required
-def employee_lookup(request):
-    emp_pk = request.GET.get("employee")
-    emp_code = (request.GET.get("employee_id") or "").strip()
+def positions_for_department(request):
+    dep = (request.GET.get("department") or "").strip()
+    if not dep:
+        return HttpResponse('<option value="">---------</option>')
+    try:
+        dep_id = int(dep)
+    except ValueError:
+        return HttpResponseBadRequest("invalid department")
 
-    employee = None
-    # Use your actual employee model that has designation; department might be elsewhere
-    sel = Employee.objects.select_related("designation")
-    # If your Employee does have a department FK, you can add "department" to select_related above.
+    qs = JobPosition.objects.filter(
+        models.Q(department_id=dep_id) | models.Q(department__id=dep_id)
+    ).order_by("job_position", "name", "id")
 
-    if emp_pk:
-        try:
-            employee = sel.get(pk=emp_pk)
-        except Employee.DoesNotExist:
-            employee = None
-    elif emp_code:
-        try:
-            employee = sel.get(employee_id=emp_code)
-        except Employee.DoesNotExist:
-            employee = None
-
-    if not employee:
-        return HttpResponse("<div class='oh-input__error'>Employee not found</div>")
-
-    # Leave balance (your model already imported)
-    lb = LeaveBalance.objects.filter(employee=employee).first()
-
-    # Department list for the OOB select swap
-    departments = Department.objects.all().order_by("department")
-
-    # Compute a SAFE department id to preselect in the OOB <select>
-    # Try Employee.department first; else try EmployeeWorkInformation.department_id
-    emp_dept_id = None
-    if hasattr(employee, "department_id") and employee.department_id:
-        emp_dept_id = employee.department_id
-    else:
-        # If department is in EmployeeWorkInformation as shown in your first message:
-        ewi = getattr(employee, "employee_work_info", None)
-        if ewi and getattr(ewi, "department_id_id", None):
-            emp_dept_id = ewi.department_id_id
-        elif ewi and getattr(ewi, "department_id", None):
-            emp_dept_id = ewi.department_id.pk if ewi.department_id else None
-
-    html = render_to_string(
-        "promotion/_employee_autofill_fields.html",
-        {
-            "employee": employee,
-            "lb": lb,
-            "departments": departments,
-            "emp_dept_id": emp_dept_id,  # <- use this in the template
-        },
-        request=request,
-    )
-    return HttpResponse(html)
+    options = ['<option value="">---------</option>']
+    for p in qs:
+        options.append(f'<option value="{p.pk}">{_pos_label(p)}</option>')
+    return HttpResponse("".join(options))

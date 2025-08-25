@@ -149,7 +149,7 @@
 </script> {% endcomment %}
 
 
-{% load i18n %}
+{% comment %} {% load i18n %}
 <div class="oh-modal__dialog-body" id="PromotionModalTarget">
   <form
     method="post"
@@ -160,57 +160,35 @@
   >
     {% csrf_token %}
 
-    <!-- SECTION: Employee Id + Fetch (as per sketch) -->
+    <!-- Employee dropdown + Department -->
     <div class="oh-card oh-card--flat" style="margin-bottom:10px;">
       <div class="oh-card__body">
-        <div class="oh-grid oh-grid--3">
-          <div class="oh-input-group" style="grid-column:1/span 2;">
-            <label class="oh-label">{% trans "Employee Id" %}</label>
-            <input type="text" id="promo_emp_code" class="oh-input" placeholder="EMP001">
+        <div class="oh-grid oh-grid--2">
+          <div class="oh-input-group">
+            <label class="oh-label">{% trans "Employee" %}</label>
+            {{ form.employee }}
           </div>
-          <div class="oh-input-group" style="display:flex; align-items:flex-end">
-            <button
-              class="oh-btn oh-btn--secondary oh-btn--shadow"
-              type="button"
-              hx-get="{% url 'promotion:employee_lookup' %}"
-              hx-target="#promo-emp-details"
-              hx-include="closest form"
-              hx-vals='js:{"employee_id": document.getElementById("promo_emp_code").value}'
-            >
-              {% trans "Fetch" %}
-            </button>
+          <div class="oh-input-group">
+            <label class="oh-label">{% trans "Department" %}</label>
+            {{ form.department }}
           </div>
         </div>
       </div>
     </div>
 
-    <!-- HIDDEN real FK (kept from ModelForm) + Department (optional) -->
-    <div class="oh-grid oh-grid--2" style="margin-bottom:6px;">
-      <div class="oh-input-group" style="display:none;">
-        {{ form.employee }}
-      </div>
-      <div class="oh-input-group">
-        <label class="oh-label">{% trans "Department" %}</label>
-        {{ form.department }}
-      </div>
-    </div>
-
-    <!-- SECTION: Name + Current vs Proposed Status/Grade (auto + select) -->
+    <!-- Auto-filled current details (replaced by HTMX on employee change) -->
     <div class="oh-card oh-card--flat" style="margin-bottom:10px;">
       <div class="oh-card__body">
         <div id="promo-emp-details" class="oh-grid oh-grid--2">
-          {# Will be filled by _employee_autofill_fields.html with Name + Current fields #}
           {% include "promotion/_employee_autofill_fields.html" with employee=None lb=None %}
         </div>
 
+        <!-- Proposed fields -->
         <div class="oh-grid oh-grid--2" style="margin-top:8px;">
-          <!-- Proposed Employee Status -->
           <div class="oh-input-group">
             <label class="oh-label">{% trans "Proposed Employee Status" %}</label>
             {{ form.proposed_status }}
           </div>
-
-          <!-- Proposed Employee New Grade/Designation -->
           <div class="oh-input-group">
             <label class="oh-label">{% trans "Proposed Employee New Grade/Designation" %}</label>
             {{ form.proposed_designation }}
@@ -219,7 +197,7 @@
       </div>
     </div>
 
-    <!-- SECTION: Leave grids (Current fetched, Adjusted auto) -->
+    <!-- Leave snapshot + Adjusted proposal -->
     <div class="oh-card oh-card--flat" style="margin-bottom:10px;">
       <div class="oh-card__body">
         <div class="oh-grid oh-grid--3">
@@ -238,13 +216,12 @@
         </div>
 
         <div id="promo-proposal-fields" class="oh-grid oh-grid--3" style="margin-top:8px;">
-          {# Adjusted CL/PL/SL + Proposed Basic Salary will render here #}
           {% include "promotion/_proposal_fields.html" with adjusted=None proposed_basic=None %}
         </div>
       </div>
     </div>
 
-    <!-- SECTION: Effective From -->
+    <!-- Effective From -->
     <div class="oh-grid oh-grid--2">
       <div class="oh-input-group">
         <label class="oh-label">{{ form.effective_from.label }}</label>
@@ -252,8 +229,9 @@
       </div>
     </div>
 
-    <!-- Hidden snapshots to submit (kept from your form) -->
-    {{ form.current_status }} {{ form.current_designation }}
+    <!-- Hidden snapshots (real ModelForm fields). We will replace these via OOB from the partial -->
+    {{ form.current_status }}
+    {{ form.current_designation }}
     {{ form.current_cl }} {{ form.current_pl }} {{ form.current_sl }}
     {{ form.adjusted_cl }} {{ form.adjusted_pl }} {{ form.adjusted_sl }}
     {{ form.proposed_basic_salary }}
@@ -266,12 +244,126 @@
 </div>
 
 <script>
-  // Close modal
   document.getElementById('promoCancelBtn')?.addEventListener('click', () => {
-    const modal = document.getElementById('PromotionModal'); if (modal) modal.style.display = 'none';
+    const modal = document.getElementById('PromotionModal');
+    if (modal) modal.style.display = 'none';
   });
+  document.body.addEventListener("promotion:created", () => { location.reload(); });
+  document.body.addEventListener("promotion:updated", () => { location.reload(); });
+</script> {% endcomment %}
 
-  // Refresh page after create/update (you already listen for these in list page)
+
+{% load i18n %}
+<div class="oh-modal__dialog-body" id="PromotionModalTarget">
+  <form
+    method="post"
+    class="oh-form"
+    hx-post="{% if is_update %}{% url 'promotion:update' instance.id %}{% else %}{% url 'promotion:create' %}{% endif %}"
+    hx-target="#PromotionModalTarget"
+    hx-swap="innerHTML"
+  >
+    {% csrf_token %}
+
+    <!-- Employee dropdown + Department -->
+    <div class="oh-card oh-card--flat" style="margin-bottom:10px;">
+      <div class="oh-card__body">
+        <div class="oh-grid oh-grid--2">
+          <div class="oh-input-group">
+            <label class="oh-label">{% trans "Employee" %}</label>
+            {{ form.employee }}
+          </div>
+          <div class="oh-input-group">
+            <label class="oh-label">{% trans "Department" %}</label>
+            {{ form.department }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auto-filled current details (HTMX) + visible read-only status/designation -->
+    <div class="oh-card oh-card--flat" style="margin-bottom:10px;">
+      <div class="oh-card__body">
+        <div id="promo-emp-details" class="oh-grid oh-grid--2">
+          {% include "promotion/_employee_autofill_fields.html" with employee=None lb=None %}
+        </div>
+
+        <!-- Visible, read-only display fields filled via OOB -->
+        <div class="oh-grid oh-grid--2" style="margin-top:8px;">
+          <div class="oh-input-group">
+            <label class="oh-label">{% trans "Current Status" %}</label>
+            <input class="oh-input" id="v_current_status" value="" readonly>
+          </div>
+          <div class="oh-input-group">
+            <label class="oh-label">{% trans "Current Designation" %}</label>
+            <input class="oh-input" id="v_current_designation" value="" readonly>
+          </div>
+        </div>
+
+        <!-- Proposed fields -->
+        <div class="oh-grid oh-grid--2" style="margin-top:8px;">
+          <div class="oh-input-group">
+            <label class="oh-label">{% trans "Proposed Employee Status" %}</label>
+            {{ form.proposed_status }}
+          </div>
+          <div class="oh-input-group">
+            <label class="oh-label">{% trans "Proposed Employee New Grade/Designation" %}</label>
+            {{ form.proposed_designation }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leave snapshot + Adjusted proposal -->
+    <div class="oh-card oh-card--flat" style="margin-bottom:10px;">
+      <div class="oh-card__body">
+        <div class="oh-grid oh-grid--3">
+          <div class="oh-input-group">
+            <label class="oh-label">{% trans "Current Leave (CL)" %}</label>
+            <input class="oh-input" id="v_current_cl" value="0" readonly>
+          </div>
+          <div class="oh-input-group">
+            <label class="oh-label">{% trans "Current Leave (PL)" %}</label>
+            <input class="oh-input" id="v_current_pl" value="0" readonly>
+          </div>
+          <div class="oh-input-group">
+            <label class="oh-label">{% trans "Current Leave (SL)" %}</label>
+            <input class="oh-input" id="v_current_sl" value="0" readonly>
+          </div>
+        </div>
+
+        <div id="promo-proposal-fields" class="oh-grid oh-grid--3" style="margin-top:8px;">
+          {% include "promotion/_proposal_fields.html" with adjusted=None proposed_basic=None %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Effective From -->
+    <div class="oh-grid oh-grid--2">
+      <div class="oh-input-group">
+        <label class="oh-label">{{ form.effective_from.label }}</label>
+        {{ form.effective_from }}
+      </div>
+    </div>
+
+    <!-- Hidden snapshots (submitted) -->
+    {{ form.current_status }}
+    {{ form.current_designation }}
+    {{ form.current_cl }} {{ form.current_pl }} {{ form.current_sl }}
+    {{ form.adjusted_cl }} {{ form.adjusted_pl }} {{ form.adjusted_sl }}
+    {{ form.proposed_basic_salary }}
+
+    <div class="oh-modal__dialog-footer mt-2">
+      <button type="submit" class="oh-btn oh-btn--secondary oh-btn--shadow">{% trans "Submit" %}</button>
+      <button type="button" class="oh-btn oh-btn--light" id="promoCancelBtn">{% trans "Cancel" %}</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.getElementById('promoCancelBtn')?.addEventListener('click', () => {
+    const modal = document.getElementById('PromotionModal');
+    if (modal) modal.style.display = 'none';
+  });
   document.body.addEventListener("promotion:created", () => { location.reload(); });
   document.body.addEventListener("promotion:updated", () => { location.reload(); });
 </script>
