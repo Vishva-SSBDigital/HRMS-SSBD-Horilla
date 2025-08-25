@@ -531,7 +531,8 @@ from django.views.decorators.http import require_http_methods
 from django.views.generic import ListView
 
 from base.models import Department,JobPosition 
-from employee.models import Employee  # <- real HR Employee
+from employee.models import Employee
+from .models import Designation  # <- real HR Employee
 from .forms import PromotionForm
 from .models import (
     Promotion,
