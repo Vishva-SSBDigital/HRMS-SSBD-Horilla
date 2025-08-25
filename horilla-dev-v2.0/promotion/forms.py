@@ -167,19 +167,37 @@ class PromotionForm(forms.ModelForm):
             "hx-trigger": "change",
             "hx-include": "#id_employee",  # send only the employee
         })
+        # self.fields["department"].widget.attrs.update({
+        #     "hx-get": reverse("promotion:positions_for_department"),
+        #     "hx-target": "#id_proposed_designation",  # update the select's options
+        #     "hx-trigger": "change",
+        #     "hx-include": "#id_department",
+        #     "hx-swap": "innerHTML",
+        # })
         self.fields["department"].widget.attrs.update({
+            "id": "id_department",
+            "class": "oh-input oh-select",
             "hx-get": reverse("promotion:positions_for_department"),
-            "hx-target": "#id_proposed_designation",  # update the select's options
+            "hx-target": "#proposed-wrapper",   # << important
             "hx-trigger": "change",
             "hx-include": "#id_department",
             "hx-swap": "innerHTML",
-        })
+})
+        # Proposed select has a stable id (the server will return the full select with same id)
         self.fields["proposed_designation"].widget.attrs.update({
+            "id": "id_proposed_designation",
+            "class": "oh-input oh-select",
             "hx-get": reverse("promotion:designation_details"),
             "hx-target": "#promo-proposal-fields",
             "hx-trigger": "change",
             "hx-include": "closest form",
-        })
+})
+        # self.fields["proposed_designation"].widget.attrs.update({
+        #     "hx-get": reverse("promotion:designation_details"),
+        #     "hx-target": "#promo-proposal-fields",
+        #     "hx-trigger": "change",
+        #     "hx-include": "closest form",
+        # })
 
         # Preload options when editing / when department is already set
         dep_id = None

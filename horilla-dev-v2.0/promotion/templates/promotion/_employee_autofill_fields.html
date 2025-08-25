@@ -231,7 +231,7 @@
 {% endif %} {% endcomment %}
 
 
-{% load i18n %}
+{% comment %} {% load i18n %}
 {% if employee %}
   <!-- Fill visible status/designation -->
   <input id="v_current_status" value="{{ status_label }}" class="oh-input" readonly hx-swap-oob="true">
@@ -258,5 +258,91 @@
         <option value="{{ d.id }}" {% if d.id == emp_dept_id %}selected{% endif %}>{{ d.department }}</option>
       {% endfor %}
     </select>
+  {% endif %}
+{% endif %} {% endcomment %}
+
+
+{% comment %} {% load i18n %}
+
+{% if employee %}
+  <!-- Visible, read-only values (filled OOB) -->
+  <input id="v_current_status" class="oh-input" value="{{ status_label|default:'' }}" readonly hx-swap-oob="true">
+  <input id="v_current_designation" class="oh-input" value="{{ desig_label|default:'' }}" readonly hx-swap-oob="true">
+
+  <!-- Hidden fields that will be submitted (OOB set) -->
+  <input type="hidden" id="id_current_status" name="current_status" value="{{ status_code|default:'' }}" hx-swap-oob="true">
+  <input type="hidden" id="id_current_designation" name="current_designation" value="{{ desig_pk|default:'' }}" hx-swap-oob="true">
+
+  <!-- Leave snapshot (visible + hidden) -->
+  <input type="text" id="v_current_cl" class="oh-input" value="{{ lb.cl_balance|default:0 }}" readonly hx-swap-oob="true">
+  <input type="text" id="v_current_pl" class="oh-input" value="{{ lb.pl_balance|default:0 }}" readonly hx-swap-oob="true">
+  <input type="text" id="v_current_sl" class="oh-input" value="{{ lb.sl_balance|default:0 }}" readonly hx-swap-oob="true">
+
+  <input type="hidden" id="id_current_cl" name="current_cl" value="{{ lb.cl_balance|default:0 }}" hx-swap-oob="true">
+  <input type="hidden" id="id_current_pl" name="current_pl" value="{{ lb.pl_balance|default:0 }}" hx-swap-oob="true">
+  <input type="hidden" id="id_current_sl" name="current_sl" value="{{ lb.sl_balance|default:0 }}" hx-swap-oob="true">
+
+  {% if departments %}
+    
+    <select
+      id="id_department"
+      name="department"
+      class="oh-input oh-select"
+      hx-swap-oob="true"
+
+      hx-get="{% url 'promotion:positions_for_department' %}"
+      hx-target="#proposed-wrapper"  
+      hx-trigger="change"
+      hx-include="#id_department"
+      hx-swap="innerHTML"
+    >
+      <option value="">---------</option>
+      {% for d in departments %}
+        <option value="{{ d.id }}"{% if d.id == emp_dept_id %} selected{% endif %}>{{ d.department }}</option>
+      {% endfor %}
+    </select>
+
+    <!-- Fire one change automatically so options load for the preselected department -->
+    <script hx-swap-oob="true">
+      (function(){
+        var dep = document.getElementById('id_department');
+        if (dep) dep.dispatchEvent(new Event('change', {bubbles:true}));
+      })();
+    </script>
+  {% endif %}
+{% endif %} {% endcomment %}
+
+
+
+{% load i18n %}
+
+{% if employee %}
+  <!-- Fill visible read-only fields -->
+  <input id="v_current_status" class="oh-input" value="{{ status_label|default:'' }}" readonly hx-swap-oob="true">
+  <input id="v_current_designation" class="oh-input" value="{{ desig_label|default:'' }}" readonly hx-swap-oob="true">
+
+  <!-- Hidden fields to submit -->
+  <input type="hidden" id="id_current_status" name="current_status" value="{{ status_code|default:'' }}" hx-swap-oob="true">
+  <input type="hidden" id="id_current_designation" name="current_designation" value="{{ desig_pk|default:'' }}" hx-swap-oob="true">
+
+  <!-- Leave snapshots -->
+  <input type="text" id="v_current_cl" class="oh-input" value="{{ lb.cl_balance|default:0 }}" readonly hx-swap-oob="true">
+  <input type="text" id="v_current_pl" class="oh-input" value="{{ lb.pl_balance|default:0 }}" readonly hx-swap-oob="true">
+  <input type="text" id="v_current_sl" class="oh-input" value="{{ lb.sl_balance|default:0 }}" readonly hx-swap-oob="true">
+
+  <input type="hidden" id="id_current_cl" name="current_cl" value="{{ lb.cl_balance|default:0 }}" hx-swap-oob="true">
+  <input type="hidden" id="id_current_pl" name="current_pl" value="{{ lb.pl_balance|default:0 }}" hx-swap-oob="true">
+  <input type="hidden" id="id_current_sl" name="current_sl" value="{{ lb.sl_balance|default:0 }}" hx-swap-oob="true">
+
+  {% if emp_dept_id %}
+    <!-- Set the existing #id_department select and fire change once -->
+    <script hx-swap-oob="true">
+      (function(){
+        var dep = document.getElementById('id_department');
+        if (!dep) return;
+        dep.value = "{{ emp_dept_id }}";
+        dep.dispatchEvent(new Event('change', {bubbles:true}));
+      })();
+    </script>
   {% endif %}
 {% endif %}

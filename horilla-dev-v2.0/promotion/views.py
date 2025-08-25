@@ -530,7 +530,7 @@ from django.template.loader import render_to_string
 from django.views.decorators.http import require_http_methods
 from django.views.generic import ListView
 
-from base.models import Department
+from base.models import Department,JobPosition 
 from employee.models import Employee  # <- real HR Employee
 from .forms import PromotionForm
 from .models import (
@@ -540,8 +540,31 @@ from .models import (
     LeaveEntitlement,
     SalaryBand,
 )
+def _designation_for_jobposition(jp):
+    name = getattr(jp, "job_position", None) or getattr(jp, "name", None)
+    if not name:
+        return None
+    desig, _ = Designation.objects.get_or_create(name=name)
+    return desig
 
-
+def _render_proposed_select(request, pairs, selected=""):
+    url = reverse("promotion:designation_details")
+    attrs = (
+        'class="oh-input" '                      # ← remove oh-select
+        'id="id_proposed_designation" '
+        'name="proposed_designation" '
+        f'hx-get="{url}" '
+        'hx-target="#promo-proposal-fields" '
+        'hx-trigger="change" '
+        'hx-include="closest form"'
+    )
+    html = [f"<select {attrs}>"]
+    html.append('<option value="">---------</option>')
+    for pk, label in pairs:
+        sel = ' selected' if str(pk) == str(selected) else ''
+        html.append(f'<option value="{pk}"{sel}>{label}</option>')
+    html.append("</select>")
+    return "".join(html)
 def _pos_label(p):
     return getattr(p, "job_position", None) or getattr(p, "name", f"Position #{p.pk}")
 def _label(x):
@@ -770,11 +793,30 @@ def designation_details(request):
 
 
 
+# @login_required
+# def positions_for_department(request):
+#     dep = (request.GET.get("department") or "").strip()
+#     if not dep:
+#         return HttpResponse('<option value="">---------</option>')
+#     try:
+#         dep_id = int(dep)
+#     except ValueError:
+#         return HttpResponseBadRequest("invalid department")
+
+#     qs = JobPosition.objects.filter(
+#         models.Q(department_id=dep_id) | models.Q(department__id=dep_id)
+#     ).order_by("job_position", "name", "id")
+
+#     options = ['<option value="">---------</option>']
+#     for p in qs:
+#         label = getattr(p, "job_position", None) or getattr(p, "name", f"Position #{p.pk}")
+#         options.append(f'<option value="{p.pk}">{label}</option>')
+#     return HttpResponse("".join(options))
 @login_required
 def positions_for_department(request):
     dep = (request.GET.get("department") or "").strip()
     if not dep:
-        return HttpResponse('<option value="">---------</option>')
+        return HttpResponse(_render_proposed_select(request, []))
     try:
         dep_id = int(dep)
     except ValueError:
@@ -782,9 +824,18 @@ def positions_for_department(request):
 
     qs = JobPosition.objects.filter(
         models.Q(department_id=dep_id) | models.Q(department__id=dep_id)
-    ).order_by("job_position", "name", "id")
+    ).select_related("department").order_by("job_position", "name", "id")
 
-    options = ['<option value="">---------</option>']
+    pairs = []
     for p in qs:
-        options.append(f'<option value="{p.pk}">{_pos_label(p)}</option>')
-    return HttpResponse("".join(options))
+        desig = _designation_for_jobposition(p)
+        if not desig:
+            continue
+        pos_name = getattr(p, "job_position", None) or getattr(p, "name", f"Position #{p.pk}")
+        dept_obj = getattr(p, "department", None) or getattr(p, "department_id", None)
+        dept_label = getattr(dept_obj, "department", None) or getattr(dept_obj, "name", "")
+        label = f"{pos_name} - ({dept_label} Dept)" if dept_label else pos_name
+        # value must be a Designation PK (your FK)
+        pairs.append((desig.pk, label))
+
+    return HttpResponse(_render_proposed_select(request, pairs))

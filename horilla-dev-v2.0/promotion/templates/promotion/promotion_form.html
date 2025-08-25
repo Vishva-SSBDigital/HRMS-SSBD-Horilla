@@ -300,7 +300,7 @@
         </div>
 
         <!-- Proposed fields -->
-        <div class="oh-grid oh-grid--2" style="margin-top:8px;">
+        {% comment %} <div class="oh-grid oh-grid--2" style="margin-top:8px;">
           <div class="oh-input-group">
             <label class="oh-label">{% trans "Proposed Employee Status" %}</label>
             {{ form.proposed_status }}
@@ -310,6 +310,12 @@
             {{ form.proposed_designation }}
           </div>
         </div>
+      </div>
+    </div> {% endcomment %}
+       <div class="oh-input-group">
+      <label class="oh-label">{% trans "Proposed Employee New Grade/Designation" %}</label>
+      <div id="proposed-wrapper">
+        {{ form.proposed_designation }}  {# initial select; will be fully replaced on dept change #}
       </div>
     </div>
 
