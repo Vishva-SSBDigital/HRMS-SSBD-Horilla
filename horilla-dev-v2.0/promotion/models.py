@@ -243,7 +243,14 @@ class Promotion(models.Model):
 
     # Current snapshot (at creation time) and proposed target
     current_status = models.CharField(max_length=10, choices=EmpStatus.choices)
-    proposed_status = models.CharField(max_length=10, choices=EmpStatus.choices)
+    # proposed_status = models.CharField(max_length=10, choices=EmpStatus.choices)
+    proposed_status = models.CharField(
+        max_length=10,
+        choices=EmpStatus.choices,
+        blank=True,
+        null=True,
+    )
+
 
     current_designation = models.ForeignKey(
         Designation,

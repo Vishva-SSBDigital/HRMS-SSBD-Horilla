@@ -664,41 +664,179 @@ def _default_basic_for(designation):
 
 # --- create/update/delete -------------------------------------------
 
+# @login_required
+# @require_http_methods(["GET", "POST"])
+# def promotion_create(request):
+#     if request.method == "GET":
+#         form = PromotionForm()
+#         return render(request, "promotion/promotion_form.html", {"form": form, "is_update": False})
+
+#     form = PromotionForm(request.POST)
+#     if not form.is_valid():
+#         return render(request, "promotion/promotion_form.html", {"form": form, "is_update": False})
+
+#     with transaction.atomic():
+#         promo = form.save(commit=False)
+#         promo.created_by = request.user
+#         print(promo)
+
+#         # Snapshot from authoritative sources (avoid client tampering)
+#         emp = promo.employee
+#         # status code should be 'REGULAR'/'CONTRACT' from Employee.status
+#         promo.current_status = getattr(emp, "status", "") or (request.POST.get("current_status") or "")
+
+#         # current designation from employee FK
+#         promo.current_designation = getattr(emp, "designation", None)
+
+#         # current leave snapshot
+#         lb = LeaveBalance.objects.filter(employee=emp).first()
+#         promo.current_cl = lb.cl_balance if lb else 0
+#         promo.current_pl = lb.pl_balance if lb else 0
+#         promo.current_sl = lb.sl_balance if lb else 0
+
+#         promo.save()
+
+#     messages.success(request, "Promotion created.")
+#     resp = render(request, "promotion/promotion_form.html", {"form": PromotionForm(), "is_update": False, "created": True})
+#     resp["HX-Trigger"] = "promotion:created"
+#     return resp
+
+
+
+
+
+
+
+
+
+
+
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.shortcuts import render
+from django.views.decorators.http import require_http_methods
+
+from .forms import PromotionForm
+from .models import LeaveBalance  # adjust import if needed
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def promotion_create(request):
     if request.method == "GET":
-        form = PromotionForm()
-        return render(request, "promotion/promotion_form.html", {"form": form, "is_update": False})
+        return render(
+            request,
+            "promotion/promotion_form.html",
+            {"form": PromotionForm(), "is_update": False},
+        )
 
-    form = PromotionForm(request.POST)
+    form = PromotionForm(request.POST, request.FILES)
     if not form.is_valid():
-        return render(request, "promotion/promotion_form.html", {"form": form, "is_update": False})
+        print('Form is not valid')
+        return render(
+            request,
+            "promotion/promotion_form.html",
+            {"form": form, "is_update": False},
+        )
 
     with transaction.atomic():
         promo = form.save(commit=False)
         promo.created_by = request.user
 
-        # Snapshot from authoritative sources (avoid client tampering)
-        emp = promo.employee
-        # status code should be 'REGULAR'/'CONTRACT' from Employee.status
-        promo.current_status = getattr(emp, "status", "") or (request.POST.get("current_status") or "")
+        # --- Employee (authoritative) ---
+        emp = form.cleaned_data["employee"]
+        promo.employee = emp
 
-        # current designation from employee FK
-        promo.current_designation = getattr(emp, "designation", None)
+        # --- Current status snapshot (authoritative) ---
+        promo.current_status = getattr(emp, "status", "") or ""
 
-        # current leave snapshot
+        # --- Current designation snapshot (handle FK non-null) ---
+        cd_field = promo._meta.get_field("current_designation")
+        is_fk = getattr(cd_field, "many_to_one", False)
+        fk_not_nullable = bool(is_fk and getattr(cd_field, "null", False) is False)
+
+        emp_curr_desig = getattr(emp, "designation", None)
+        proposed_desig = form.cleaned_data.get("proposed_designation")  # ModelChoiceField
+
+        if is_fk:
+            # We need a Designation instance to assign
+            if emp_curr_desig:
+                promo.current_designation = emp_curr_desig
+            elif fk_not_nullable:
+                # Fallback to proposed designation if employee has none
+                if proposed_desig:
+                    promo.current_designation = proposed_desig
+                else:
+                    form.add_error(
+                        "proposed_designation",
+                        "Please select a proposed designation (employee has no current designation).",
+                    )
+                    return render(
+                        request,
+                        "promotion/promotion_form.html",
+                        {"form": form, "is_update": False},
+                    )
+            else:
+                # FK nullable -> allow NULL if your model allows it
+                promo.current_designation = None
+        else:
+            # Char/Text snapshot
+            if emp_curr_desig:
+                promo.current_designation = (
+                    getattr(emp_curr_desig, "name", None)
+                    or getattr(emp_curr_desig, "title", None)
+                    or str(emp_curr_desig)
+                )
+            else:
+                promo.current_designation = (
+                    getattr(proposed_desig, "name", None)
+                    or getattr(proposed_desig, "title", None)
+                    or (str(proposed_desig) if proposed_desig else "")
+                )
+
+        # --- Default proposed_status if missing ---
+        if not form.cleaned_data.get("proposed_status"):
+            promo.proposed_status = getattr(emp, "status", "") or "REGULAR"
+
+        # --- Leave snapshot ---
         lb = LeaveBalance.objects.filter(employee=emp).first()
-        promo.current_cl = lb.cl_balance if lb else 0
-        promo.current_pl = lb.pl_balance if lb else 0
-        promo.current_sl = lb.sl_balance if lb else 0
+        promo.current_cl = getattr(lb, "cl_balance", 0) if lb else 0
+        promo.current_pl = getattr(lb, "pl_balance", 0) if lb else 0
+        promo.current_sl = getattr(lb, "sl_balance", 0) if lb else 0
 
         promo.save()
+        if hasattr(form, "save_m2m"):
+            form.save_m2m()
 
     messages.success(request, "Promotion created.")
-    resp = render(request, "promotion/promotion_form.html", {"form": PromotionForm(), "is_update": False, "created": True})
+    resp = render(
+        request,
+        "promotion/promotion_form.html",
+        {"form": PromotionForm(), "is_update": False, "created": True},
+    )
     resp["HX-Trigger"] = "promotion:created"
     return resp
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @login_required

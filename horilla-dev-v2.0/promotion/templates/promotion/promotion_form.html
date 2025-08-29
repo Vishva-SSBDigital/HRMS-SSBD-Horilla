@@ -255,6 +255,14 @@
 
 {% load i18n %}
 <div class="oh-modal__dialog-body" id="PromotionModalTarget">
+  {% if form.non_field_errors %}
+  <div class="oh-alert oh-alert--danger">{{ form.non_field_errors }}</div>
+{% endif %}
+{% for field in form %}
+  {% if field.errors %}
+    <div class="oh-text--danger small">{{ field.label }}: {{ field.errors|striptags }}</div>
+  {% endif %}
+{% endfor %}
   <form
     method="post"
     class="oh-form"
@@ -352,11 +360,11 @@
     </div>
 
     <!-- Hidden snapshots (submitted) -->
-    {{ form.current_status }}
+    {% comment %} {{ form.current_status }}
     {{ form.current_designation }}
     {{ form.current_cl }} {{ form.current_pl }} {{ form.current_sl }}
     {{ form.adjusted_cl }} {{ form.adjusted_pl }} {{ form.adjusted_sl }}
-    {{ form.proposed_basic_salary }}
+    {{ form.proposed_basic_salary }} {% endcomment %}
 
     <div class="oh-modal__dialog-footer mt-2">
       <button type="submit" class="oh-btn oh-btn--secondary oh-btn--shadow">{% trans "Submit" %}</button>
