@@ -25,5 +25,5 @@ IMG_SRC = "images/ui/performance-appraisal.png"
 
 SUBMENUS = [
     {"menu": "Promotion List", "redirect": reverse_lazy("promotion:employee_list")},
-    {"menu": "Create Promotion", "redirect": reverse_lazy("promotion:create")},
+    # {"menu": "Create Promotion", "redirect": reverse_lazy("promotion:create")},
 ]
